@@ -1,0 +1,2 @@
+# richdotcom
+Scalper App
