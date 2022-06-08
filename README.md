@@ -1,2 +1,2 @@
-# richdotcom
+# Richdotcom
 Scalper App
