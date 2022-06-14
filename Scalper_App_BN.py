@@ -33,7 +33,6 @@ api = ShoonyaApiPy()
 
 def Login(): #Login function get the api login + username and cash margin
     global ret
-    log(f'Login to the account')
     ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
     usersession=ret['susertoken']
     print(usersession)
@@ -41,10 +40,10 @@ def Login(): #Login function get the api login + username and cash margin
     username = "WELCOME" + " " + username + "!"
     Welcome_lbl2 = Label(root, text=username, fg="white", bg="green")
     Welcome_lbl2.place(x=130, y=20)
+    log(f'Login to the account {username}')
 
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
 
-    log(f'getting the BN last price also update the m2m')
     global bn_nifty_lp
     global bn_lis
     bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
@@ -53,6 +52,7 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
     pos_data=api.get_positions()
     if pos_data == None:
         print("No Positions Data available today")
+        log(f'No Positions Data available today')
     else:
         mtm = 0
         pnl = 0
@@ -70,21 +70,23 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
                 m2m.config(fg="Red")
     
     limit = api.get_limits()
-#print(limit)
     try:
-        margin_used = (float((limit['marginused'])))
+        marginused = (float((limit['marginused'])))
     except KeyError:
         marginused = 0
-
-    margin_available = round(((float((limit['cash']))) - margin_used),2)
-    print(margin_available)
+    
+    margin_available = round(((float((limit['cash']))) - marginused),2)
+    margin_available_1lot=margin_available/25
+    print("With the fund avialble you can get lot of BN with price:",margin_available_1lot)
 
     Label(root, text=margin_available,bg="green",fg="white").grid(row=1, padx=415, pady=20)
     # Margin Avbl Label
     Margin_Avbl_lbl1 = Label(root, text='Avbl_Margin:',bg="floral white")
     Margin_Avbl_lbl1.place(x=320, y=20)
+    log(f'BN last price updated  {bn_nifty_lp}')
+    log(f'The fund balance updated {margin_available}')
 
-
+    
 def startThread(thread): # Start the Thread (Thread Manager)
     match thread:
         case 0:
@@ -108,7 +110,9 @@ def startThread(thread): # Start the Thread (Thread Manager)
         case 6:
             t1=threading.Thread(target=pos)
             t1.start()
-
+        case 7:
+            t1=threading.Thread(target=my_update)
+            t1.start()
 def stopThread(thread):  # Stop the Thread (Thread Manager)
     global stopPos,stopStrat
     match thread:
@@ -118,7 +122,7 @@ def stopThread(thread):  # Stop the Thread (Thread Manager)
             stopStrat=True
 
 def check_order_stat(): # Check the order details to place the SL order
-    log(f'Checking order status for order number {order_no}')
+    
     global order_status
     ret = api.get_order_book()
     #print(ret)
@@ -128,6 +132,7 @@ def check_order_stat(): # Check the order details to place the SL order
         if order_no==row["norenordno"]:
             order_status=row["status"]
             print("orderstatus:", order_status)
+            log(f'Checking order status for order number {order_no} and order status is {order_status}')
             #print(row["status"],row["tsym"])
 
 Symbol_Name = []
@@ -155,20 +160,25 @@ def placeCallOrder():  # Place the Call option order
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
     print(order_no)
-    log(f'Place call order and order number is {order_no}')
     order_no=order_no['norenordno']
+    log(f'Placed call order and order number is {order_no}')
     check_order_stat()
-    sl_order_number = ""
-
+    place_sl_order_call()
 def place_sl_order_call():
     global sl_order_number
-
-    if order_status=='COMPLETE':
-        print("Placed SELL SL order")
-        sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_ce, quantity=qty, discloseqty=0,
+    try:
+        if order_status=='COMPLETE':
+            print("Placed SELL SL order")
+            sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_ce, quantity=qty, discloseqty=0,
                                         price_type='SL-LMT', price=stoploss_limit_ce, trigger_price=stoploss_limit_trigger_ce,retention='DAY', remarks='my_order_001')
-        sl_order_number=sl_order_number['norenordno']
-        log(f'Placed SL order for put position and order number is {sl_order_number}')
+            sl_order_number=sl_order_number['norenordno']
+            log(f'Placed SL order for call position and order number is {sl_order_number}')
+        elif order_status=='REJECTED':
+            print("Order rejected")
+            log(f'order still open or rejected please place manual SL order once the order completed')
+            
+    except:
+        print("error placing SL order")
 
 def placePutOrder():   # Place the Put option order
     global order_no
@@ -181,39 +191,41 @@ def placePutOrder():   # Place the Put option order
     price_ltp=price_ltp['bp1']
     stoploss_limit_pe=float(price_ltp)-float(sl)
     stoploss_limit_trigger_pe=float(stoploss_limit_pe) - float(1.0)
-    # target_limit=float(target)+ float(price_ltp)
-    # target_limit_trigger=float(target_limit) - float(1.0)
-
     order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_pe, 
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
     print(order_no)
     order_no=order_no['norenordno']
+    log(f'Placed Put order and order number is {order_no}')
     check_order_stat()
-    sleep(2)
     place_sl_order_put()
 
 def place_sl_order_put():
     global sl_order_number
-
-    if order_status=='COMPLETE':
-        print("Placed SELL SL order")
-        sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_pe, quantity=qty, discloseqty=0,
+    try:
+        if order_status=='COMPLETE':
+            print("Placed SELL SL order")
+            sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_pe, quantity=qty, discloseqty=0,
                                         price_type='SL-LMT', price=stoploss_limit_pe, trigger_price=stoploss_limit_trigger_pe,retention='DAY', remarks='my_order_001')
-        sl_order_number=sl_order_number['norenordno']
-        log(f'Placed SL order for put position and order number is {sl_order_number}')
+            sl_order_number=sl_order_number['norenordno']
+            log(f'Placed SL order for put position and order number is {sl_order_number}')
+        elif order_status=='REJECTED':
+            print("order still open please place manual SL order once the order completed")
+            log(f'order still open or rejected please place manual SL order once the order completed')
+    except:
+        print ("error placing SL order")
 
 def cancel_sl_order():
     try:
         cancel_sl_order=api.cancel_order(orderno=sl_order_number)
-        log(f'cancelled SL order {sl_order_number}, before squre off')
+        log(f'cancelled SL order {sl_order_number}, before squre off the position')
     except Exception as e:
         log(f'an exception occurred :: {e}')
 
 def squreoff(): # squreoff all the open order manually
     cancel_sl_order()
-    log(f'Squring off the open postion')
+    log(f'squre off the open postions')
     squreoff_Pos=api.get_positions()
     squreoff_Pos=pd.DataFrame(squreoff_Pos)
     row=0
@@ -259,12 +271,10 @@ def pos(): # Display the Position Details
             else:
                 profitLabel.config(bg="Red")
         elif netqty == 0:
-            print("No open position since this error reported clear label")
             print("the loop broken since no open Pos")
+            log(f'No Open Position since the loop broken')
             break 
-
         sleep(2)        
-        #print("loop continue since netqty == 0 not met")
 
 #orderData funtion to collect sl,tager,qty data
 
@@ -276,10 +286,7 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
     try:
         sl=float(stoploss.get())
         qty=qtycalldata.get()
-        #target=float(targetdata.get())
-        print("SL is:", sl)
-        print("qty is:", qty)
-        #print("target is:", target)
+        log(f'collected the SL: {sl}, QTY:{qty}')
     except:
         print("SL error")
     
@@ -288,6 +295,7 @@ bn_nifty_lp=[]
 def my_expiry_update(*args): # Get the expiry date from Combobox
     global Expiry_day
     Expiry_day=Expiry_day_combo_box1.get()
+    log(f'Expiry day selected {Expiry_day}')
     print(Expiry_day)
 
 def my_update(*args): # Get the token details according to the Comobox selection & update the call & pur strike
@@ -319,31 +327,27 @@ def my_update(*args): # Get the token details according to the Comobox selection
     if combo_value == "ATM":
         strike_price_Ce=bn_list.get(at_the_money)
         strike_price_Pe=bn_list.get(at_the_money)
-        print(strike_price_Ce,strike_price_Pe)
     elif combo_value == "ITM":
         strike_price_Ce=bn_list.get(in_the_money)
         strike_price_Pe=bn_list.get(out_of_the_money)
-        print(strike_price_Ce,strike_price_Pe)
     elif combo_value == "ITM1":
         strike_price_Ce=bn_list.get(in_the_money1)
         strike_price_Pe=bn_list.get(out_of_the_money1)
-        print(strike_price_Ce,strike_price_Pe) 
     elif combo_value == "OTM":
         strike_price_Ce=bn_list.get(out_of_the_money)
         strike_price_Pe=bn_list.get(in_the_money)
-        print(strike_price_Ce,strike_price_Pe) 
     elif combo_value == "OTM2":
         strike_price_Ce=bn_list.get(out_of_the_money1)
         strike_price_Pe=bn_list.get(in_the_money1)
-        print(strike_price_Ce,strike_price_Pe) 
     
+    log(f'call option strike:{strike_price_Ce}, put option strike:{strike_price_Pe}')
+
     call_strike.delete(0,"end")
     call_strike.insert(0,strike_price_Ce)
     put_strike.delete(0,"end")
     put_strike.insert(0,strike_price_Pe)
 
 # write the logic here to get the token 
-    #begin = time.time()
     Symbol_strike = strike_price_Ce
     Symbol_index = index
     Symbol_Expiry_day = Expiry_day
@@ -351,8 +355,6 @@ def my_update(*args): # Get the token details according to the Comobox selection
     res_ce = api.searchscrip('NFO',searchtext=ScripName_CE)
     tsym_ce=res_ce['values'][0]['tsym']
     token_ce=res_ce['values'][0]['token']
-    print( "call symbol is:", tsym_ce )
-    print("call option token is:", token_ce)
     Symbol_strike = strike_price_Pe
     Symbol_index = index
     Symbol_Expiry_day = Expiry_day
@@ -360,11 +362,7 @@ def my_update(*args): # Get the token details according to the Comobox selection
     res_pe = api.searchscrip('NFO',searchtext=ScripName_PE)
     tsym_pe=res_pe['values'][0]['tsym']
     token_pe=res_pe['values'][0]['token']
-    print("work put symbol is:", tsym_pe )
-    print("put option token is:", token_pe)
     update_ltp()
-    #end = time.time()
-    #print(f"Total runtime of the program is {end - begin}")
     
 def help(): # Display the Help child window
    top= Toplevel(root)
@@ -376,16 +374,18 @@ def help(): # Display the Help child window
 
 def update_ltp(): # Update the strike price in tkinter window
     call_strike_ltp=api.get_quotes(exchange='NFO', token=token_ce)
-    display_call_ltp=Label(root,text=call_strike_ltp['lp'],width=5)
+    call_strike_ltp=call_strike_ltp['lp']
+    display_call_ltp=Label(root,text=call_strike_ltp,width=5)
     display_call_ltp.place(x=480,y=120)
     put_strike_ltp=api.get_quotes(exchange='NFO', token=token_pe)
-    display_put_ltp=Label(root,text=put_strike_ltp['lp'],width=5)
+    put_strike_ltp=put_strike_ltp['lp']
+    display_put_ltp=Label(root,text=put_strike_ltp,width=5)
     display_put_ltp.place(x=550,y=120)
-
+    log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
 
 root=Tk()
 root.geometry("650x350")
-root.config(background="floral white")
+root.config(background="#ffffe6")
 root.title('Richdotcom Scalper App')
 style= ttk.Style()
 style.theme_use('clam')
@@ -440,12 +440,12 @@ qtycalldata.trace("w", orderData)
 # Symbol Label
 Symbol_lbl1 = Label(root, text='Symbol:',font=("Helvatical bold",11))
 Symbol_lbl1.place(x=40, y=60)
-# Strike Label
-Strike_lbl1 = Label(root, text='Strike:',font=("Helvatical bold",11))
-Strike_lbl1.place(x=40, y=110)
 # Expiry day Label
 Expiry_date_lbl1 = Label(root, text='Expiry:',font=("Helvatical bold",11))
-Expiry_date_lbl1.place(x=40, y=160)
+Expiry_date_lbl1.place(x=40, y=110)
+# Strike Label
+Strike_lbl1 = Label(root, text='Strike:',font=("Helvatical bold",11))
+Strike_lbl1.place(x=40, y=160)
 # Positions button
 Positions_btn = Button(root, text='Positions',width=5,font=("Helvatical bold",11),bg="black",fg="white",command=lambda:startThread(6))
 Positions_btn.place(x=40, y=200)
@@ -480,17 +480,18 @@ Symbol_combo_box1['values'] = ("BANKNIFTY")
 Symbol_combo_box1.place(x=120, y=60)
 Symbol_combo_box1.current(0)
 index=Symbol_combo_box1.get()
+#Combox Expiry Day
+Expiry_day_combo=tk.StringVar() # string variable 
+Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","16 JUN22","JUN"],width=10,textvariable=Expiry_day_combo)
+Expiry_day_combo_box1.place(x=120, y=110)
+Expiry_day_combo_box1.current(0)
+Expiry_day_combo.trace('w',my_expiry_update)
 # Combobox 2
 BN_Combo_values=["ITM1","ITM","ATM","OTM","OTM2"]
 Strike_combo=tk.StringVar()
 Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=10,textvariable=Strike_combo)
-Strike_combo_box1.place(x=120, y=110)
+Strike_combo_box1.place(x=120, y=160)
 Strike_combo_box1.current(2)
 Strike_combo.trace('w',my_update)
-#Combox Expiry Day
-Expiry_day_combo=tk.StringVar() # string variable 
-Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","16 JUN22","JUN"],width=10,textvariable=Expiry_day_combo)
-Expiry_day_combo_box1.place(x=120, y=160)
-Expiry_day_combo_box1.current(0)
-Expiry_day_combo.trace('w',my_expiry_update)
 root.mainloop()
+
