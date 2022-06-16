@@ -161,10 +161,11 @@ def placeCallOrder():  # Place the Call option order
                         retention='DAY', remarks='my_order_001')
     order_no=order_no['norenordno']
     log(f'Placed call order and order number is {order_no}')
-    check_order_stat()
     place_sl_order_call()
 def place_sl_order_call():
     global sl_order_number
+    check_order_stat()
+    sleep(1)
     try:
         if order_status=='COMPLETE':
             print("Placed SELL SL order")
@@ -173,7 +174,6 @@ def place_sl_order_call():
             sl_order_number=sl_order_number['norenordno']
             log(f'Placed SL order for call position and order number is {sl_order_number}')
         elif order_status=='OPEN':
-            check_order_stat()
             place_sl_order_call()
             log(f'Order Still open, loop continue')
         elif order_status=='REJECTED':
@@ -197,11 +197,12 @@ def placePutOrder():   # Place the Put option order
                         retention='DAY', remarks='my_order_001')
     order_no=order_no['norenordno']
     log(f'Placed Put order and order number is {order_no}')
-    check_order_stat()
     place_sl_order_put()
 
 def place_sl_order_put():
     global sl_order_number
+    check_order_stat()
+    sleep(1)
     try:
         if order_status=='COMPLETE':
             print("Placed SELL SL order")
@@ -210,7 +211,6 @@ def place_sl_order_put():
             sl_order_number=sl_order_number['norenordno']
             log(f'Placed SL order for put position and order number is {sl_order_number}')
         elif order_status=='OPEN':
-            check_order_stat()
             place_sl_order_call()
             log(f'Order Still open, loop continue')
         elif order_status=='REJECTED':
