@@ -16,10 +16,9 @@ import time
 start = datetime.now()
 print(start)
 
-logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"ec.log"
+logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"App.log"
 print(logfile)
 logging.basicConfig(level=logging.INFO, filename=logfile, filemode='w')
-
 
 def log(msg, *args):
     logging.info(msg, *args)
@@ -93,7 +92,7 @@ def startThread(thread): # Start the Thread (Thread Manager)
             t1=threading.Thread(target=Login)
             t1.start()
         case 1:
-            t1=threading.Thread(target=help)
+            t1=threading.Thread(target=trade_book)
             t1.start()
         case 2:
             t1=threading.Thread(target=placeCallOrder())
@@ -108,7 +107,7 @@ def startThread(thread): # Start the Thread (Thread Manager)
             t1=threading.Thread(target=squreoff)
             t1.start()
         case 6:
-            t1=threading.Thread(target=pos)
+            t1=threading.Thread(target=pos,daemon='true')
             t1.start()
         case 7:
             t1=threading.Thread(target=my_update)
@@ -124,42 +123,42 @@ def stopThread(thread):  # Stop the Thread (Thread Manager)
 def check_order_stat(): # Check the order details to place the SL order
     
     global order_status
-    ret = api.get_order_book()
-    #print(ret)
-    ret=pd.DataFrame(ret)
-    row=0
-    for row in ret.to_dict("records"):
-        if order_no==row["norenordno"]:
-            order_status=row["status"]
-            print("orderstatus:", order_status)
-            log(f'Checking order status for order number {order_no} and order status is {order_status}')
-            #print(row["status"],row["tsym"])
+    try:
+        ret = api.get_order_book()
+        #print(ret)
+        ret=pd.DataFrame(ret)
+        row=0
+        for row in ret.to_dict("records"):
+            if order_no==row["norenordno"]:
+                order_status=row["status"]
+                print("orderstatus:", order_status)
+                log(f'Checking order status for order number {order_no} and order status is {order_status}')
+                #print(row["status"],row["tsym"])
+
+    # #order status to displayed in GUI
+        ord_stat_entry.delete(0,"end")
+        ord_stat_entry.insert(0,order_status)
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 
 Symbol_Name = []
 order_no=[]
 
 def placeCallOrder():  # Place the Call option order 
     global order_no
-    global sl_order_number
     global stoploss_limit_ce
     global stoploss_limit_trigger_ce
 
     # global target_limit
     price_ltp = api.get_quotes(exchange='NFO', token=token_ce)
     price_ltp=price_ltp['bp1']
-
     stoploss_limit_ce=float(price_ltp)-float(sl)
-    stoploss_limit_trigger_ce=float(stoploss_limit_ce) - float(1.0)
-    # target_limit=float(target)+ float(price_ltp)
-    # target_limit_trigger=float(target_limit) - float(1.0)
-
-
+    stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
     # # Place call order
     order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_ce, 
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
-    print(order_no)
     order_no=order_no['norenordno']
     log(f'Placed call order and order number is {order_no}')
     check_order_stat()
@@ -173,29 +172,29 @@ def place_sl_order_call():
                                         price_type='SL-LMT', price=stoploss_limit_ce, trigger_price=stoploss_limit_trigger_ce,retention='DAY', remarks='my_order_001')
             sl_order_number=sl_order_number['norenordno']
             log(f'Placed SL order for call position and order number is {sl_order_number}')
+        elif order_status=='OPEN':
+            check_order_stat()
+            place_sl_order_call()
+            log(f'Order Still open, loop continue')
         elif order_status=='REJECTED':
-            print("Order rejected")
-            log(f'order still open or rejected please place manual SL order once the order completed')
+            log(f'Order Rejected')
             
     except:
         print("error placing SL order")
 
 def placePutOrder():   # Place the Put option order
     global order_no
-    global sl_order_number
-    # global target_limit
     global stoploss_limit_pe
     global stoploss_limit_trigger_pe
 
     price_ltp = api.get_quotes(exchange='NFO', token=token_pe)
     price_ltp=price_ltp['bp1']
     stoploss_limit_pe=float(price_ltp)-float(sl)
-    stoploss_limit_trigger_pe=float(stoploss_limit_pe) - float(1.0)
+    stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
     order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_pe, 
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
-    print(order_no)
     order_no=order_no['norenordno']
     log(f'Placed Put order and order number is {order_no}')
     check_order_stat()
@@ -210,9 +209,12 @@ def place_sl_order_put():
                                         price_type='SL-LMT', price=stoploss_limit_pe, trigger_price=stoploss_limit_trigger_pe,retention='DAY', remarks='my_order_001')
             sl_order_number=sl_order_number['norenordno']
             log(f'Placed SL order for put position and order number is {sl_order_number}')
+        elif order_status=='OPEN':
+            check_order_stat()
+            place_sl_order_call()
+            log(f'Order Still open, loop continue')
         elif order_status=='REJECTED':
-            print("order still open please place manual SL order once the order completed")
-            log(f'order still open or rejected please place manual SL order once the order completed')
+            log(f'order rejected')
     except:
         print ("error placing SL order")
 
@@ -237,45 +239,48 @@ def squreoff(): # squreoff all the open order manually
 def pos(): # Display the Position Details
     global profitLabel
     global netqty
-    netqty =0 
-    while True:
-        orders=api.get_positions()
-        orders=pd.DataFrame(orders)
-        row=0
-        for row in orders.to_dict("records"):
-            if int(row["netqty"])>0:
-                symbol=row["tsym"]
-                Avg=row["netavgprc"]
-                liveprice=row["lp"]
-                pnlpos=float(row["urmtom"])
-                netqty=float(row["netqty"])
+    try:
+        netqty =0 
+        while True:
+            orders=api.get_positions()
+            orders=pd.DataFrame(orders)
+            row=0
+            for row in orders.to_dict("records"):
+                if int(row["netqty"])>0:
+                    symbol=row["tsym"]
+                    Avg=row["netavgprc"]
+                    liveprice=row["lp"]
+                    pnlpos=float(row["urmtom"])
+                    netqty=float(row["netqty"])
 
-        Label(root,text='Symbol',width=23,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=40,y=250)       
-        Label(root,text='Avg',width=8,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=235,y=250)
-        Label(root,text='LTP',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=310,y=250)
-        Label(root,text='QTY',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=400,y=250)
-        Label(root,text='Pnl',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=490,y=250)
-        if netqty != 0:
-            pos_symbol=Label(root,text=symbol,width=23,bg="cornsilk3",fg="black",font=("Arial Black",10))
-            pos_symbol.place(x=40,y=280) 
-            pos_Avg=Label(root,text=Avg,width=8,bg="cornsilk3",fg="black",font=("Arial Black",10))
-            pos_Avg.place(x=235,y=280)
-            pos_ltp=Label(root,text=liveprice,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
-            pos_ltp.place(x=310,y=280)
-            pos_netqty=Label(root,text=netqty,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
-            pos_netqty.place(x=400,y=280)
-            profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
-            profitLabel.place(x=490, y=280)
-            if pnlpos > 0:
-                profitLabel.config(bg="Green")
-            else:
-                profitLabel.config(bg="Red")
-        elif netqty == 0:
-            print("the loop broken since no open Pos")
-            log(f'No Open Position since the loop broken')
-            break 
-        sleep(2)        
-
+                Label(root,text='Symbol',width=23,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=40,y=250)       
+                Label(root,text='Avg',width=8,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=235,y=250)
+                Label(root,text='LTP',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=310,y=250)
+                Label(root,text='QTY',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=400,y=250)
+                Label(root,text='Pnl',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=490,y=250)
+            if netqty != 0:
+                pos_symbol=Label(root,text=symbol,width=23,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_symbol.place(x=40,y=280) 
+                pos_Avg=Label(root,text=Avg,width=8,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_Avg.place(x=235,y=280)
+                pos_ltp=Label(root,text=liveprice,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_ltp.place(x=310,y=280)
+                pos_netqty=Label(root,text=netqty,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_netqty.place(x=400,y=280)
+                profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
+                profitLabel.place(x=490, y=280)
+                if pnlpos > 0:
+                    profitLabel.config(bg="Green")
+                else:
+                    profitLabel.config(bg="Red")
+            elif netqty == 0:
+                print("the loop broken since no open Pos")
+                log(f'No Open Position since the loop broken')
+                break
+             
+                   
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 #orderData funtion to collect sl,tager,qty data
 
 def orderData(*args): # Get the orderData like SL,Target,QTY
@@ -287,101 +292,117 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
         sl=float(stoploss.get())
         qty=qtycalldata.get()
         log(f'collected the SL: {sl}, QTY:{qty}')
-    except:
-        print("SL error")
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
     
 bn_nifty_lp=[]
 
 def my_expiry_update(*args): # Get the expiry date from Combobox
     global Expiry_day
-    Expiry_day=Expiry_day_combo_box1.get()
-    log(f'Expiry day selected {Expiry_day}')
-    print(Expiry_day)
+    try:
+        Expiry_day=Expiry_day_combo_box1.get()
+        log(f'Expiry day selected {Expiry_day}')
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 
 def my_update(*args): # Get the token details according to the Comobox selection & update the call & pur strike
     global tsym_ce
     global tsym_pe
     global token_ce
     global token_pe
-    minute_close = []
-    Strike_selection=Strike_combo_box1.get()    
-    round_number = math.fmod(bn_nifty_lp, 100) # round the strike
-    atm = bn_nifty_lp - round_number
-    itm = atm - 100
-    itm1= atm - 200
-    otm = atm + 100
-    otm1 = atm + 200
-    in_the_money1 = 'itm1'
-    in_the_money = 'itm'
-    at_the_money = 'atm'
-    out_of_the_money = 'otm'
-    out_of_the_money1 = 'otm1'
-    bn_list={"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1}
-    in_the_money1 = 'itm1'
-    in_the_money = 'itm'
-    at_the_money = 'atm'
-    out_of_the_money = 'otm'
-    out_of_the_money1 = 'otm1'
-    combo_value = Strike_selection
 
-    if combo_value == "ATM":
-        strike_price_Ce=bn_list.get(at_the_money)
-        strike_price_Pe=bn_list.get(at_the_money)
-    elif combo_value == "ITM":
-        strike_price_Ce=bn_list.get(in_the_money)
-        strike_price_Pe=bn_list.get(out_of_the_money)
-    elif combo_value == "ITM1":
-        strike_price_Ce=bn_list.get(in_the_money1)
-        strike_price_Pe=bn_list.get(out_of_the_money1)
-    elif combo_value == "OTM":
-        strike_price_Ce=bn_list.get(out_of_the_money)
-        strike_price_Pe=bn_list.get(in_the_money)
-    elif combo_value == "OTM2":
-        strike_price_Ce=bn_list.get(out_of_the_money1)
-        strike_price_Pe=bn_list.get(in_the_money1)
+    try:
+        Strike_selection=Strike_combo_box1.get()    
+        round_number = math.fmod(bn_nifty_lp, 100) # round the strike
+        atm = bn_nifty_lp - round_number
+        itm = atm - 100
+        itm1= atm - 200
+        otm = atm + 100
+        otm1 = atm + 200
+        in_the_money1 = 'itm1'
+        in_the_money = 'itm'
+        at_the_money = 'atm'
+        out_of_the_money = 'otm'
+        out_of_the_money1 = 'otm1'
+        bn_list={"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1}
+        in_the_money1 = 'itm1'
+        in_the_money = 'itm'
+        at_the_money = 'atm'
+        out_of_the_money = 'otm'
+        out_of_the_money1 = 'otm1'
+        combo_value = Strike_selection
+
+        if combo_value == "ATM":
+            strike_price_Ce=bn_list.get(at_the_money)
+            strike_price_Pe=bn_list.get(at_the_money)
+        elif combo_value == "ITM":
+            strike_price_Ce=bn_list.get(in_the_money)
+            strike_price_Pe=bn_list.get(out_of_the_money)
+        elif combo_value == "ITM1":
+            strike_price_Ce=bn_list.get(in_the_money1)
+            strike_price_Pe=bn_list.get(out_of_the_money1)
+        elif combo_value == "OTM":
+            strike_price_Ce=bn_list.get(out_of_the_money)
+            strike_price_Pe=bn_list.get(in_the_money)
+        elif combo_value == "OTM2":
+            strike_price_Ce=bn_list.get(out_of_the_money1)
+            strike_price_Pe=bn_list.get(in_the_money1)
     
-    log(f'call option strike:{strike_price_Ce}, put option strike:{strike_price_Pe}')
+        log(f'call option strike:{strike_price_Ce}, put option strike:{strike_price_Pe}')
 
-    call_strike.delete(0,"end")
-    call_strike.insert(0,strike_price_Ce)
-    put_strike.delete(0,"end")
-    put_strike.insert(0,strike_price_Pe)
+        call_strike.delete(0,"end")
+        call_strike.insert(0,strike_price_Ce)
+        put_strike.delete(0,"end")
+        put_strike.insert(0,strike_price_Pe)
 
 # write the logic here to get the token 
-    Symbol_strike = strike_price_Ce
-    Symbol_index = index
-    Symbol_Expiry_day = Expiry_day
-    ScripName_CE=f'{Symbol_index} {Symbol_Expiry_day} {Symbol_strike}'+" "+'CE'
-    res_ce = api.searchscrip('NFO',searchtext=ScripName_CE)
-    tsym_ce=res_ce['values'][0]['tsym']
-    token_ce=res_ce['values'][0]['token']
-    Symbol_strike = strike_price_Pe
-    Symbol_index = index
-    Symbol_Expiry_day = Expiry_day
-    ScripName_PE=f'{Symbol_index} {Symbol_Expiry_day} {Symbol_strike}'+" "+'PE'
-    res_pe = api.searchscrip('NFO',searchtext=ScripName_PE)
-    tsym_pe=res_pe['values'][0]['tsym']
-    token_pe=res_pe['values'][0]['token']
-    update_ltp()
+        Symbol_strike = strike_price_Ce
+        Symbol_index = index
+        Symbol_Expiry_day = Expiry_day
+        ScripName_CE=f'{Symbol_index} {Symbol_Expiry_day} {Symbol_strike}'+" "+'CE'
+        res_ce = api.searchscrip('NFO',searchtext=ScripName_CE)
+        tsym_ce=res_ce['values'][0]['tsym']
+        token_ce=res_ce['values'][0]['token']
+        Symbol_strike = strike_price_Pe
+        Symbol_index = index
+        Symbol_Expiry_day = Expiry_day
+        ScripName_PE=f'{Symbol_index} {Symbol_Expiry_day} {Symbol_strike}'+" "+'PE'
+        res_pe = api.searchscrip('NFO',searchtext=ScripName_PE)
+        tsym_pe=res_pe['values'][0]['tsym']
+        token_pe=res_pe['values'][0]['token']
+        update_ltp()
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
     
-def help(): # Display the Help child window
-   top= Toplevel(root)
-   top.geometry("750x250")
-   top.title("Help")
-   with open('help.txt') as f:
-       lines = f.read()
-   Label(top, text= lines, font=('Arial Black', 10)).place(x=150,y=80)
+def trade_book(): # Display the Help child window
+   
+    try:
+        top= Toplevel(root)
+        top.geometry("750x250")
+        top.title("Trade book")
+        
+        trade_b = api.get_trade_book()
+        trade_b=pd.DataFrame(trade_b)
+        
+
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
+
 
 def update_ltp(): # Update the strike price in tkinter window
-    call_strike_ltp=api.get_quotes(exchange='NFO', token=token_ce)
-    call_strike_ltp=call_strike_ltp['lp']
-    display_call_ltp=Label(root,text=call_strike_ltp,width=5)
-    display_call_ltp.place(x=480,y=120)
-    put_strike_ltp=api.get_quotes(exchange='NFO', token=token_pe)
-    put_strike_ltp=put_strike_ltp['lp']
-    display_put_ltp=Label(root,text=put_strike_ltp,width=5)
-    display_put_ltp.place(x=550,y=120)
-    log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
+    try:
+
+        call_strike_ltp=api.get_quotes(exchange='NFO', token=token_ce)
+        call_strike_ltp=call_strike_ltp['lp']
+        display_call_ltp=Label(root,text=call_strike_ltp,width=5)
+        display_call_ltp.place(x=480,y=120)
+        put_strike_ltp=api.get_quotes(exchange='NFO', token=token_pe)
+        put_strike_ltp=put_strike_ltp['lp']
+        display_put_ltp=Label(root,text=put_strike_ltp,width=5)
+        display_put_ltp.place(x=550,y=120)
+        log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 
 root=Tk()
 root.geometry("650x350")
@@ -410,8 +431,8 @@ Login_btn1.place(x=40, y=10)
 Refresh_btn1 = Button(root, text='Refresh',width=4,fg="white",bg="black",command=lambda:startThread(3))
 Refresh_btn1.place(x=490, y=10)
 #Help Button
-Help_btn1 = Button(root, text='Help',width=4,fg="white",bg="black",command=lambda:startThread(1))
-Help_btn1.place(x=570, y=10)
+tb_btn1 = Button(root, text='Orders',width=4,fg="white",bg="black",command=lambda:startThread(1))
+tb_btn1.place(x=570, y=10)
 # CE BUY button
 CE_BUY_Btn1 = Button(root, text='BUY',width=3,fg="white",bg="black",command=lambda:startThread(2))
 CE_BUY_Btn1.place(x=480, y=150)
@@ -446,6 +467,11 @@ Expiry_date_lbl1.place(x=40, y=110)
 # Strike Label
 Strike_lbl1 = Label(root, text='Strike:',font=("Helvatical bold",11))
 Strike_lbl1.place(x=40, y=160)
+###
+ord_stat = Label(root, text='Order Stat:',font=("Helvatical bold",11))
+ord_stat.place(x=40, y=310)
+ord_stat_entry=Entry(root,width=10)
+ord_stat_entry.place(x=130,y=310)
 # Positions button
 Positions_btn = Button(root, text='Positions',width=5,font=("Helvatical bold",11),bg="black",fg="white",command=lambda:startThread(6))
 Positions_btn.place(x=40, y=200)
