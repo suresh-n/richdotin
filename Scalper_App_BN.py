@@ -1,4 +1,5 @@
 ## Scalper App to buy the option with one click with SL & Target
+from cProfile import label
 from time import sleep
 from tkinter import *
 import tkinter as tk
@@ -112,13 +113,17 @@ def startThread(thread): # Start the Thread (Thread Manager)
         case 7:
             t1=threading.Thread(target=my_update)
             t1.start()
-def stopThread(thread):  # Stop the Thread (Thread Manager)
-    global stopPos,stopStrat
-    match thread:
-        case 0:
-            stopPos=True
-        case 1:
-            stopStrat=True
+#testing the stopthread
+def stopThread():
+    global stopPos
+    stopPos=True
+# def stopThread(thread):  # Stop the Thread (Thread Manager)
+#     global stopPos,stopStrat
+#     match thread:
+#         case 0:
+#             stopPos=True
+#         case 1:
+#             stopStrat=True
 
 def check_order_stat(): # Check the order details to place the SL order
     
@@ -236,6 +241,7 @@ def squreoff(): # squreoff all the open order manually
             print(row["tsym"])
             api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=row["tsym"], quantity=int(row["netqty"]),discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
 
+stopPos=False
 def pos(): # Display the Position Details
     global profitLabel
     global netqty
@@ -276,7 +282,12 @@ def pos(): # Display the Position Details
             elif netqty == 0:
                 print("the loop broken since no open Pos")
                 log(f'No Open Position since the loop broken')
+                global stopPos
+                if(stopPos==True):
+                    stopPos=False
+                    break
                 break
+                
              
                    
     except Exception as e:
@@ -290,10 +301,40 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
 
     try:
         sl=float(stoploss.get())
-        qty=qtycalldata.get()
+        #qty=qtycalldata.get()
         log(f'collected the SL: {sl}, QTY:{qty}')
     except Exception as e:
         log(f'an exception occurred :: {e}')
+    
+    try: 
+        qty_value=qty_combo_box1.get()
+        qty_to_lot={"1": 25, "2": 50, "3": 75, "4": 100, "5": 125}
+
+        if qty_value == "1":
+            qty=qty_to_lot.get('1')
+        elif qty_value == "2":
+            qty=qty_to_lot.get('2')
+        elif qty_value == "3":
+            qty=qty_to_lot.get('3')
+        elif qty_value == "4":
+            qty=qty_to_lot.get('4')
+        elif qty_value == "5":
+            qty=qty_to_lot.get('5')
+        
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
+
+    try:
+        maxloss = sl * qty
+        maxloss_lbl1 = Label(root, text='Max Loss',font=("Helvatical bold",11))
+        maxloss_lbl1.place(x=250, y=120)
+        maxloss_lbl2 = Label(root, text=maxloss,font=("Helvatical bold",11))
+        maxloss_lbl2.place(x=325, y=120)
+        
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
+
+
     
 bn_nifty_lp=[]
 
@@ -381,6 +422,7 @@ def trade_book(): # Display the Help child window
         top.geometry("750x250")
         top.title("Trade book")
         
+        Label(root, text='Work in Progress',font=("Helvatical bold",15))
         trade_b = api.get_trade_book()
         trade_b=pd.DataFrame(trade_b)
         
@@ -395,11 +437,11 @@ def update_ltp(): # Update the strike price in tkinter window
         call_strike_ltp=api.get_quotes(exchange='NFO', token=token_ce)
         call_strike_ltp=call_strike_ltp['lp']
         display_call_ltp=Label(root,text=call_strike_ltp,width=5)
-        display_call_ltp.place(x=480,y=120)
+        display_call_ltp.place(x=500,y=120)
         put_strike_ltp=api.get_quotes(exchange='NFO', token=token_pe)
         put_strike_ltp=put_strike_ltp['lp']
         display_put_ltp=Label(root,text=put_strike_ltp,width=5)
-        display_put_ltp.place(x=550,y=120)
+        display_put_ltp.place(x=560,y=120)
         log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
     except Exception as e:
         log(f'an exception occurred :: {e}')
@@ -410,6 +452,7 @@ root.config(background="#ffffe6")
 root.title('Richdotcom Scalper App')
 style= ttk.Style()
 style.theme_use('clam')
+root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotcom.png'))
 
 def time():
     string = strftime('%H:%M:%S %p')
@@ -435,10 +478,10 @@ tb_btn1 = Button(root, text='Orders',width=4,fg="white",bg="black",command=lambd
 tb_btn1.place(x=570, y=10)
 # CE BUY button
 CE_BUY_Btn1 = Button(root, text='BUY',width=3,fg="white",bg="black",command=lambda:startThread(2))
-CE_BUY_Btn1.place(x=480, y=150)
+CE_BUY_Btn1.place(x=500, y=150)
 # PE BUY button
 PE_BUY_Btn1 = Button(root, text='BUY',width=3,fg="white",bg="black",command=lambda:startThread(4))
-PE_BUY_Btn1.place(x=550, y=150)
+PE_BUY_Btn1.place(x=560, y=150)
 #SL text & entry box
 stoploss=IntVar()
 sl_text = Label(root, text='SL:',font=("Helvatical bold",11))
@@ -453,11 +496,11 @@ stoploss.trace("w", orderData)
 # target_entry=Entry(root,width=5,textvariable=targetdata)
 # target_entry.place(x=320, y=110)
 # targetdata.trace("w", orderData)
-# qty side
-qtycalldata=tk.IntVar()
-qty_call_entry=tk.Entry(root,width=3,textvariable=qtycalldata)
-qty_call_entry.place(x=440, y=150)
-qtycalldata.trace("w", orderData)
+## qty side
+# qtycalldata=tk.IntVar()
+# qty_call_entry=tk.Entry(root,width=3,textvariable=qtycalldata)
+# qty_call_entry.place(x=440, y=150)
+# qtycalldata.trace("w", orderData)
 # Symbol Label
 Symbol_lbl1 = Label(root, text='Symbol:',font=("Helvatical bold",11))
 Symbol_lbl1.place(x=40, y=60)
@@ -479,18 +522,18 @@ Positions_btn.place(x=40, y=200)
 m2m_lbl1 = Label(root, text='m2m:',font=("Helvatical bold",11))
 m2m_lbl1.place(x=200, y=210)
 #squreoff button 
-squreoff_Btn1 = Button(root, text='SqureOff',width=4,fg="white",bg="black",command=lambda:startThread(5))
+squreoff_Btn1 = Button(root, text='SqureOff',width=5,fg="white",bg="black",command=lambda:startThread(5))
 squreoff_Btn1.place(x=120, y=200)
 # CALL Label
 CALL_lbl1 = Label(root, text='CALL',font=("Helvatical bold",11))
-CALL_lbl1.place(x=480, y=60)
+CALL_lbl1.place(x=500, y=60)
 call_strike=Entry(root,width=5)
-call_strike.place(x=480,y=90)
+call_strike.place(x=500,y=90)
 # PUT Label
 PUT_lbl1 = Label(root, text='PUT',font=("Helvatical bold",11))
 PUT_lbl1.place(x=560, y=60)
 put_strike=Entry(root,width=5)
-put_strike.place(x=550,y=90)
+put_strike.place(x=560,y=90)
 # Strike Price Label
 Strike_price_lbl1 = Label(root, text='Strike:',font=("Helvatical bold",11))
 Strike_price_lbl1.place(x=400, y=90)
@@ -498,17 +541,18 @@ Strike_price_lbl1.place(x=400, y=90)
 price_lable = Label(root, text='Price:',font=("Helvatical bold",11))
 price_lable.place(x=400, y=120)
 # QTY Label
-QTY_lbl1 = Label(root, text='Qty:',font=("Helvatical bold",11))
+QTY_lbl1 = Label(root, text='Lot:',font=("Helvatical bold",11))
 QTY_lbl1.place(x=400, y=150)
-# Combobox 1
+
+# Combobox 0
 Symbol_combo_box1 = ttk.Combobox(root,width=10)
 Symbol_combo_box1['values'] = ("BANKNIFTY")
 Symbol_combo_box1.place(x=120, y=60)
 Symbol_combo_box1.current(0)
 index=Symbol_combo_box1.get()
-#Combox Expiry Day
+#Combobox 1
 Expiry_day_combo=tk.StringVar() # string variable 
-Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","16 JUN22","JUN"],width=10,textvariable=Expiry_day_combo)
+Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","23 JUN22","30 JUN22","JUN","7 JUL22"],width=10,textvariable=Expiry_day_combo)
 Expiry_day_combo_box1.place(x=120, y=110)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
@@ -519,5 +563,13 @@ Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=10,textvaria
 Strike_combo_box1.place(x=120, y=160)
 Strike_combo_box1.current(2)
 Strike_combo.trace('w',my_update)
+# Combobox 3
+qty_combo_value=["1","2","3","4","5"]
+qty_combo=tk.StringVar()
+qty_combo_box1 = ttk.Combobox(root, values=qty_combo_value,width=3,textvariable=qty_combo)
+qty_combo_box1.place(x=440, y=150)
+qty_combo_box1.current(0)
+qty_combo.trace('w',orderData)
+
 root.mainloop()
 
