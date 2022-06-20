@@ -60,7 +60,7 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
             pnl += float(i['rpnl'])
             day_m2m = mtm + pnl
             day_m2m_total = "{:.2f}".format(day_m2m)
-            m2m = Label(root, text=day_m2m_total, bg="black",font=("Helvatical bold",10))
+            m2m = Label(root, text=day_m2m_total, bg="white",font=("Helvatical bold",11))
             m2m.place(x=260, y=210)
 
             if day_m2m > 0:
@@ -563,7 +563,7 @@ BN_Combo_values=["ITM2","ITM1","ITM","ATM","OTM","OTM1","OTM2"]
 Strike_combo=tk.StringVar()
 Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=11,textvariable=Strike_combo)
 Strike_combo_box1.place(x=120, y=160)
-Strike_combo_box1.current(2)
+Strike_combo_box1.current(3)
 Strike_combo.trace('w',my_update)
 # Combobox 3 converted as lot from entry
 qty_combo_value=["1","2","3","4","5"]
