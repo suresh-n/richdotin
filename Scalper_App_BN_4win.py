@@ -358,19 +358,27 @@ def my_update(*args): # Get the token details according to the Comobox selection
         atm = bn_nifty_lp - round_number
         itm = atm - 100
         itm1= atm - 200
+        itm2= atm - 300
         otm = atm + 100
         otm1 = atm + 200
+        otm2 = atm + 300
+
+        in_the_money1 = 'itm2'
         in_the_money1 = 'itm1'
         in_the_money = 'itm'
         at_the_money = 'atm'
         out_of_the_money = 'otm'
         out_of_the_money1 = 'otm1'
-        bn_list={"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1}
+        out_of_the_money1 = 'otm2'
+
+        bn_list={"itm2": itm2,"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1,"otm2": otm2}
+        in_the_money2 = 'itm2'
         in_the_money1 = 'itm1'
         in_the_money = 'itm'
         at_the_money = 'atm'
         out_of_the_money = 'otm'
         out_of_the_money1 = 'otm1'
+        out_of_the_money2 = 'otm2'
         combo_value = Strike_selection
 
         if combo_value == "ATM":
@@ -382,12 +390,18 @@ def my_update(*args): # Get the token details according to the Comobox selection
         elif combo_value == "ITM1":
             strike_price_Ce=bn_list.get(in_the_money1)
             strike_price_Pe=bn_list.get(out_of_the_money1)
+        elif combo_value == "ITM2":
+            strike_price_Ce=bn_list.get(in_the_money2)
+            strike_price_Pe=bn_list.get(out_of_the_money2)
         elif combo_value == "OTM":
             strike_price_Ce=bn_list.get(out_of_the_money)
             strike_price_Pe=bn_list.get(in_the_money)
-        elif combo_value == "OTM2":
+        elif combo_value == "OTM1":
             strike_price_Ce=bn_list.get(out_of_the_money1)
             strike_price_Pe=bn_list.get(in_the_money1)
+        elif combo_value == "OTM2":
+            strike_price_Ce=bn_list.get(out_of_the_money2)
+            strike_price_Pe=bn_list.get(in_the_money2)
     
         log(f'call option strike:{strike_price_Ce}, put option strike:{strike_price_Pe}')
 
@@ -450,9 +464,10 @@ root.geometry("650x350")
 root.config(background="#ffffe6")
 root.title('Richdotcom Scalper App')
 style= ttk.Style()
-style.theme_use('winnative')
+#style.theme_use('winnative')
+style.theme_use('clam')
 #root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='/c/Users/SN/exe/ShoonyaApi-py/richdotcom.png'))
-root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
+#root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
 
 def time():
     string = strftime('%H:%M:%S %p')
@@ -489,19 +504,6 @@ sl_text.place(x=250, y=80)
 loss=Entry(root, width=5,textvariable=stoploss)
 loss.place(x=320, y=80)
 stoploss.trace("w", orderData)
-#Target text $ entry box
-# targetdata=tk.IntVar()
-# target_text = Label(root, text='Target:',font=("Helvatical bold",11))
-# target_text.place(x=250, y=110)
-# target_entry=Entry(root,width=5,textvariable=targetdata)
-# target_entry.place(x=320, y=110)
-# targetdata.trace("w", orderData)
-## qty side
-# qtycalldata=tk.IntVar()
-# qty_call_entry=tk.Entry(root,width=3,textvariable=qtycalldata)
-# qty_call_entry.place(x=440, y=150)
-# qtycalldata.trace("w", orderData)
-# Symbol Label
 Symbol_lbl1 = Label(root, text='Symbol:',bg='#ffffe6',font=("Helvatical bold",10))
 Symbol_lbl1.place(x=40, y=60)
 # Expiry day Label
@@ -546,7 +548,7 @@ QTY_lbl1.place(x=400, y=150)
 
 # Combobox 0
 Symbol_combo_box1 = ttk.Combobox(root,width=11)
-Symbol_combo_box1['values'] = ("BANKNIFTY")
+Symbol_combo_box1['values'] = ("BANKNIFTY","NIFTY")
 Symbol_combo_box1.place(x=120, y=60)
 Symbol_combo_box1.current(0)
 index=Symbol_combo_box1.get()
@@ -557,13 +559,13 @@ Expiry_day_combo_box1.place(x=120, y=110)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
 # Combobox 2
-BN_Combo_values=["ITM1","ITM","ATM","OTM","OTM2"]
+BN_Combo_values=["ITM2","ITM1","ITM","ATM","OTM","OTM1","OTM2"]
 Strike_combo=tk.StringVar()
 Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=11,textvariable=Strike_combo)
 Strike_combo_box1.place(x=120, y=160)
 Strike_combo_box1.current(2)
 Strike_combo.trace('w',my_update)
-# Combobox 3
+# Combobox 3 converted as lot from entry
 qty_combo_value=["1","2","3","4","5"]
 qty_combo=tk.StringVar()
 qty_combo_box1 = ttk.Combobox(root, values=qty_combo_value,width=3,textvariable=qty_combo)
@@ -573,4 +575,3 @@ qty_combo.trace('w',orderData)
 
 
 root.mainloop()
-
