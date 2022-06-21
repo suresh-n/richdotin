@@ -156,24 +156,25 @@ def placeCallOrder():  # Place the Call option order
     global order_no
     global stoploss_limit_ce
     global stoploss_limit_trigger_ce
-
-    # global target_limit
-    price_ltp = api.get_quotes(exchange='NFO', token=token_ce)
-    price_ltp=price_ltp['bp1']
-    stoploss_limit_ce=float(price_ltp)-float(sl)
-    stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
-    # # Place call order
-    order_no=api.place_order(buy_or_sell='B', product_type='I',
+    try:
+        # global target_limit
+        price_ltp = api.get_quotes(exchange='NFO', token=token_ce)
+        price_ltp=price_ltp['bp1']
+        stoploss_limit_ce=float(price_ltp)-float(sl)
+        stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
+        # # Place call order
+        order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_ce, 
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
-    order_no=order_no['norenordno']
-    log(f'Placed call order and order number is {order_no}')
-    place_sl_order_call()
+        order_no=order_no['norenordno']
+        log(f'Placed call order and order number is {order_no}')
+        place_sl_order_call()
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 def place_sl_order_call():
     global sl_order_number
     check_order_stat()
-    sleep(1)
     try:
         if order_status=='COMPLETE':
             print("Placed SELL SL order")
@@ -182,34 +183,39 @@ def place_sl_order_call():
             sl_order_number=sl_order_number['norenordno']
             log(f'Placed SL order for call position and order number is {sl_order_number}')
         elif order_status=='OPEN':
-            place_sl_order_call()
-            log(f'Order Still open, loop continue')
+            ret = api.cancel_order(orderno=order_no)
+            check_order_stat()
+            log(f'Order Still open, since cancelled to avoid the loop make place again')
+            pass
         elif order_status=='REJECTED':
-            log(f'Order Rejected')     
-    except:
-        print("error placing SL order")
+            log(f'Order Rejected')
+            
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 
 def placePutOrder():   # Place the Put option order
     global order_no
     global stoploss_limit_pe
     global stoploss_limit_trigger_pe
+    try:
 
-    price_ltp = api.get_quotes(exchange='NFO', token=token_pe)
-    price_ltp=price_ltp['bp1']
-    stoploss_limit_pe=float(price_ltp)-float(sl)
-    stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
-    order_no=api.place_order(buy_or_sell='B', product_type='I',
+        price_ltp = api.get_quotes(exchange='NFO', token=token_pe)
+        price_ltp=price_ltp['bp1']
+        stoploss_limit_pe=float(price_ltp)-float(sl)
+        stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
+        order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_pe, 
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
-    order_no=order_no['norenordno']
-    log(f'Placed Put order and order number is {order_no}')
-    place_sl_order_put()
+        order_no=order_no['norenordno']
+        log(f'Placed Put order and order number is {order_no}')
+        place_sl_order_put()
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 
 def place_sl_order_put():
     global sl_order_number
     check_order_stat()
-    sleep(1)
     try:
         if order_status=='COMPLETE':
             print("Placed SELL SL order")
@@ -218,12 +224,14 @@ def place_sl_order_put():
             sl_order_number=sl_order_number['norenordno']
             log(f'Placed SL order for put position and order number is {sl_order_number}')
         elif order_status=='OPEN':
-            place_sl_order_call()
-            log(f'Order Still open, loop continue')
+            cancel_ord = api.cancel_order(orderno=order_no)
+            check_order_stat()
+            log(f'Order Still open, since cancelled to avoid the loop make place again')
+            pass
         elif order_status=='REJECTED':
             log(f'order rejected')
-    except:
-        log (f'error placing SL order')
+    except Exception as e:
+        log(f'an exception occurred :: {e}')
 
 def cancel_sl_order():
     try:
