@@ -18,8 +18,11 @@ print(start)
 
 logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"App.log"
 print(logfile)
-logging.basicConfig(level=logging.INFO, filename=logfile, filemode='w')
-
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO, 
+                    filename=logfile, 
+                    filemode='w',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 def log(msg, *args):
     logging.info(msg, *args)
     print(msg, *args)
@@ -182,8 +185,7 @@ def place_sl_order_call():
             place_sl_order_call()
             log(f'Order Still open, loop continue')
         elif order_status=='REJECTED':
-            log(f'Order Rejected')
-            
+            log(f'Order Rejected')     
     except:
         print("error placing SL order")
 
@@ -221,7 +223,7 @@ def place_sl_order_put():
         elif order_status=='REJECTED':
             log(f'order rejected')
     except:
-        print ("error placing SL order")
+        log (f'error placing SL order')
 
 def cancel_sl_order():
     try:
