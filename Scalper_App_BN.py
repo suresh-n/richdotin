@@ -1,5 +1,4 @@
 ## Scalper App to buy the option with one click with SL & Target
-from cProfile import label
 from time import sleep
 from tkinter import *
 import tkinter as tk
@@ -12,14 +11,18 @@ from time import strftime
 from api_helper import ShoonyaApiPy
 import pandas as pd
 import time
-
+#from threading import Timer
 
 start = datetime.now()
 print(start)
 
 logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"App.log"
 print(logfile)
-logging.basicConfig(level=logging.INFO, filename=logfile, filemode='w')
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO, 
+                    filename=logfile, 
+                    filemode='w',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 def log(msg, *args):
     logging.info(msg, *args)
@@ -37,15 +40,15 @@ def Login(): #Login function get the api login + username and cash margin
     usersession=ret['susertoken']
     print(usersession)
     username = ret['uname']
-    username = "WELCOME" + " " + username + "!"
-    Welcome_lbl2 = Label(root, text=username, fg="white", bg="green")
+    username = "Welcome" + " " + username + "!"
+    Welcome_lbl2 = Label(root, text=username, fg="white",font=("Helvatical bold",10), bg="Green")
     Welcome_lbl2.place(x=130, y=20)
     log(f'Login to the account {username}')
 
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
 
     global bn_nifty_lp
-    global bn_lis
+    global sh
     bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
     bn_nifty_lp=float(bn_nifty_lp['lp'])
     print(bn_nifty_lp)
@@ -61,7 +64,7 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
             pnl += float(i['rpnl'])
             day_m2m = mtm + pnl
             day_m2m_total = "{:.2f}".format(day_m2m)
-            m2m = Label(root, text=day_m2m_total, bg="black",font=("Arial Black",10))
+            m2m = Label(root, text=day_m2m_total, bg="white",font=("Helvatical bold",11))
             m2m.place(x=260, y=210)
 
             if day_m2m > 0:
@@ -81,12 +84,13 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
 
     Label(root, text=margin_available,bg="green",fg="white").grid(row=1, padx=415, pady=20)
     # Margin Avbl Label
-    Margin_Avbl_lbl1 = Label(root, text='Avbl_Margin:',bg="floral white")
+    Margin_Avbl_lbl1 = Label(root, text='Avbl_Margin:',font=("Helvatical bold",10),bg='#ffffe6')
     Margin_Avbl_lbl1.place(x=320, y=20)
     log(f'BN last price updated  {bn_nifty_lp}')
     log(f'The fund balance updated {margin_available}')
-
-    
+    #sh=Timer(30,Refresh_clicked)
+    #sh.start()
+   
 def startThread(thread): # Start the Thread (Thread Manager)
     match thread:
         case 0:
@@ -259,22 +263,22 @@ def pos(): # Display the Position Details
                     pnlpos=float(row["urmtom"])
                     netqty=float(row["netqty"])
 
-                Label(root,text='Symbol',width=23,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=40,y=250)       
-                Label(root,text='Avg',width=8,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=235,y=250)
-                Label(root,text='LTP',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=310,y=250)
-                Label(root,text='QTY',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=400,y=250)
-                Label(root,text='Pnl',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=490,y=250)
+                Label(root,text='Symbol',width=24,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=40,y=250)       
+                Label(root,text='Avg',width=8,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=240,y=250)
+                Label(root,text='Ltp',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=313,y=250)
+                Label(root,text='Qty',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=403,y=250)
+                Label(root,text='Pnl',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=493,y=250)
             if netqty != 0:
-                pos_symbol=Label(root,text=symbol,width=23,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_symbol=Label(root,text=symbol,width=24,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_symbol.place(x=40,y=280) 
                 pos_Avg=Label(root,text=Avg,width=8,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_Avg.place(x=235,y=280)
+                pos_Avg.place(x=240,y=280)
                 pos_ltp=Label(root,text=liveprice,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_ltp.place(x=310,y=280)
+                pos_ltp.place(x=315,y=280)
                 pos_netqty=Label(root,text=netqty,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_netqty.place(x=400,y=280)
                 profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
-                profitLabel.place(x=490, y=280)
+                profitLabel.place(x=493, y=280)
                 if pnlpos > 0:
                     profitLabel.config(bg="Green")
                 else:
@@ -326,9 +330,9 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
 
     try:
         maxloss = sl * qty
-        maxloss_lbl1 = Label(root, text='Max Loss',font=("Helvatical bold",11))
+        maxloss_lbl1 = Label(root, text='Max Loss',bg='#ffffe6',font=("Helvatical bold",10))
         maxloss_lbl1.place(x=250, y=120)
-        maxloss_lbl2 = Label(root, text=maxloss,font=("Helvatical bold",11))
+        maxloss_lbl2 = Label(root, text=maxloss,bg='#ffffe6',font=("Helvatical bold",10))
         maxloss_lbl2.place(x=325, y=120)
         
     except Exception as e:
@@ -358,19 +362,27 @@ def my_update(*args): # Get the token details according to the Comobox selection
         atm = bn_nifty_lp - round_number
         itm = atm - 100
         itm1= atm - 200
+        itm2= atm - 300
         otm = atm + 100
         otm1 = atm + 200
+        otm2 = atm + 300
+
+        in_the_money1 = 'itm2'
         in_the_money1 = 'itm1'
         in_the_money = 'itm'
         at_the_money = 'atm'
         out_of_the_money = 'otm'
         out_of_the_money1 = 'otm1'
-        bn_list={"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1}
+        out_of_the_money1 = 'otm2'
+
+        bn_list={"itm2": itm2,"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1,"otm2": otm2}
+        in_the_money2 = 'itm2'
         in_the_money1 = 'itm1'
         in_the_money = 'itm'
         at_the_money = 'atm'
         out_of_the_money = 'otm'
         out_of_the_money1 = 'otm1'
+        out_of_the_money2 = 'otm2'
         combo_value = Strike_selection
 
         if combo_value == "ATM":
@@ -382,12 +394,18 @@ def my_update(*args): # Get the token details according to the Comobox selection
         elif combo_value == "ITM1":
             strike_price_Ce=bn_list.get(in_the_money1)
             strike_price_Pe=bn_list.get(out_of_the_money1)
+        elif combo_value == "ITM2":
+            strike_price_Ce=bn_list.get(in_the_money2)
+            strike_price_Pe=bn_list.get(out_of_the_money2)
         elif combo_value == "OTM":
             strike_price_Ce=bn_list.get(out_of_the_money)
             strike_price_Pe=bn_list.get(in_the_money)
-        elif combo_value == "OTM2":
+        elif combo_value == "OTM1":
             strike_price_Ce=bn_list.get(out_of_the_money1)
             strike_price_Pe=bn_list.get(in_the_money1)
+        elif combo_value == "OTM2":
+            strike_price_Ce=bn_list.get(out_of_the_money2)
+            strike_price_Pe=bn_list.get(in_the_money2)
     
         log(f'call option strike:{strike_price_Ce}, put option strike:{strike_price_Pe}')
 
@@ -421,12 +439,11 @@ def trade_book(): # Display the Help child window
         top= Toplevel(root)
         top.geometry("750x250")
         top.title("Trade book")
-        
-        Label(root, text='Work in Progress',font=("Helvatical bold",15))
+
+        #Label(root, text='Work in Progress',font=("Helvatical bold",15))
         trade_b = api.get_trade_book()
         trade_b=pd.DataFrame(trade_b)
         
-
     except Exception as e:
         log(f'an exception occurred :: {e}')
 
@@ -436,11 +453,11 @@ def update_ltp(): # Update the strike price in tkinter window
 
         call_strike_ltp=api.get_quotes(exchange='NFO', token=token_ce)
         call_strike_ltp=call_strike_ltp['lp']
-        display_call_ltp=Label(root,text=call_strike_ltp,width=5)
+        display_call_ltp=Label(root,text=call_strike_ltp,width=5,bg='Orange')
         display_call_ltp.place(x=500,y=120)
         put_strike_ltp=api.get_quotes(exchange='NFO', token=token_pe)
         put_strike_ltp=put_strike_ltp['lp']
-        display_put_ltp=Label(root,text=put_strike_ltp,width=5)
+        display_put_ltp=Label(root,text=put_strike_ltp,width=5,bg='Orange')
         display_put_ltp.place(x=560,y=120)
         log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
     except Exception as e:
@@ -453,6 +470,7 @@ root.title('Richdotcom Scalper App')
 style= ttk.Style()
 style.theme_use('clam')
 root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotcom.png'))
+#root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
 
 def time():
     string = strftime('%H:%M:%S %p')
@@ -461,30 +479,30 @@ def time():
   
 # Styling the label widget so that clock
 # will look more attractive
-lbl = Label(root, font = ('Arial Black', 10, 'bold'),
+lbl = Label(root, font = ('Helvatical bold', 10, 'bold'),
             background = 'green',
             foreground = 'white')
 lbl.place(x=530,y=310)
 time()
 
 # Login button
-Login_btn1 = Button(root, text='Login',fg="white",bg="black",command=lambda:startThread(0))
+Login_btn1 = Button(root, text='Login',font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(0))
 Login_btn1.place(x=40, y=10)
 #Refresh button
-Refresh_btn1 = Button(root, text='Refresh',width=4,fg="white",bg="black",command=lambda:startThread(3))
+Refresh_btn1 = Button(root, text='Refresh',width=5,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(3))
 Refresh_btn1.place(x=490, y=10)
 #Help Button
-tb_btn1 = Button(root, text='Orders',width=4,fg="white",bg="black",command=lambda:startThread(1))
+tb_btn1 = Button(root, text='Orders',width=6,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(1))
 tb_btn1.place(x=570, y=10)
 # CE BUY button
-CE_BUY_Btn1 = Button(root, text='BUY',width=3,fg="white",bg="black",command=lambda:startThread(2))
+CE_BUY_Btn1 = Button(root, text='Buy',font=("Helvatical bold",10),width=3,fg="white",bg="black",command=lambda:startThread(2))
 CE_BUY_Btn1.place(x=500, y=150)
 # PE BUY button
-PE_BUY_Btn1 = Button(root, text='BUY',width=3,fg="white",bg="black",command=lambda:startThread(4))
+PE_BUY_Btn1 = Button(root, text='Buy',width=3,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(4))
 PE_BUY_Btn1.place(x=560, y=150)
 #SL text & entry box
 stoploss=IntVar()
-sl_text = Label(root, text='SL:',font=("Helvatical bold",11))
+sl_text = Label(root, text='SL:',bg='#ffffe6',font=("Helvatical bold",10))
 sl_text.place(x=250, y=80)
 loss=Entry(root, width=5,textvariable=stoploss)
 loss.place(x=320, y=80)
@@ -502,66 +520,66 @@ stoploss.trace("w", orderData)
 # qty_call_entry.place(x=440, y=150)
 # qtycalldata.trace("w", orderData)
 # Symbol Label
-Symbol_lbl1 = Label(root, text='Symbol:',font=("Helvatical bold",11))
+Symbol_lbl1 = Label(root, text='Symbol:',bg='#ffffe6',font=("Helvatical bold",10))
 Symbol_lbl1.place(x=40, y=60)
 # Expiry day Label
-Expiry_date_lbl1 = Label(root, text='Expiry:',font=("Helvatical bold",11))
+Expiry_date_lbl1 = Label(root, text='Expiry:',bg='#ffffe6',font=("Helvatical bold",10))
 Expiry_date_lbl1.place(x=40, y=110)
 # Strike Label
-Strike_lbl1 = Label(root, text='Strike:',font=("Helvatical bold",11))
+Strike_lbl1 = Label(root, text='Strike:',bg='#ffffe6',font=("Helvatical bold",10))
 Strike_lbl1.place(x=40, y=160)
 ###
-ord_stat = Label(root, text='Order Stat:',font=("Helvatical bold",11))
+ord_stat = Label(root, text='Order Stat:',bg='#ffffe6',font=("Helvatical bold",10))
 ord_stat.place(x=40, y=310)
 ord_stat_entry=Entry(root,width=10)
 ord_stat_entry.place(x=130,y=310)
 # Positions button
-Positions_btn = Button(root, text='Positions',width=5,font=("Helvatical bold",11),bg="black",fg="white",command=lambda:startThread(6))
+Positions_btn = Button(root, text='Positions',width=6,font=("Helvatical bold",10),bg="black",fg="white",command=lambda:startThread(6))
 Positions_btn.place(x=40, y=200)
 #Profit m2m
-m2m_lbl1 = Label(root, text='m2m:',font=("Helvatical bold",11))
+m2m_lbl1 = Label(root, text='m2m:',bg='#ffffe6',font=("Helvatical bold",11))
 m2m_lbl1.place(x=200, y=210)
 #squreoff button 
-squreoff_Btn1 = Button(root, text='SqureOff',width=5,fg="white",bg="black",command=lambda:startThread(5))
+squreoff_Btn1 = Button(root, text='SqureOff',width=6,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(5))
 squreoff_Btn1.place(x=120, y=200)
 # CALL Label
-CALL_lbl1 = Label(root, text='CALL',font=("Helvatical bold",11))
+CALL_lbl1 = Label(root, text='CALL',bg='#ffffe6',font=("Helvatical bold",10))
 CALL_lbl1.place(x=500, y=60)
 call_strike=Entry(root,width=5)
 call_strike.place(x=500,y=90)
 # PUT Label
-PUT_lbl1 = Label(root, text='PUT',font=("Helvatical bold",11))
+PUT_lbl1 = Label(root, text='PUT',bg='#ffffe6',font=("Helvatical bold",10))
 PUT_lbl1.place(x=560, y=60)
 put_strike=Entry(root,width=5)
 put_strike.place(x=560,y=90)
 # Strike Price Label
-Strike_price_lbl1 = Label(root, text='Strike:',font=("Helvatical bold",11))
+Strike_price_lbl1 = Label(root, text='Strike:',bg='#ffffe6',font=("Helvatical bold",10))
 Strike_price_lbl1.place(x=400, y=90)
 # Strike Label
-price_lable = Label(root, text='Price:',font=("Helvatical bold",11))
+price_lable = Label(root, text='Price:',bg='#ffffe6',font=("Helvatical bold",10))
 price_lable.place(x=400, y=120)
 # QTY Label
-QTY_lbl1 = Label(root, text='Lot:',font=("Helvatical bold",11))
+QTY_lbl1 = Label(root, text='Lot:',bg='#ffffe6',font=("Helvatical bold",10))
 QTY_lbl1.place(x=400, y=150)
 
 # Combobox 0
-Symbol_combo_box1 = ttk.Combobox(root,width=10)
-Symbol_combo_box1['values'] = ("BANKNIFTY")
+Symbol_combo_box1 = ttk.Combobox(root,width=11)
+Symbol_combo_box1['values'] = ("BANKNIFTY","NIFTY")
 Symbol_combo_box1.place(x=120, y=60)
 Symbol_combo_box1.current(0)
 index=Symbol_combo_box1.get()
 #Combobox 1
 Expiry_day_combo=tk.StringVar() # string variable 
-Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","23 JUN22","30 JUN22","JUN","7 JUL22"],width=10,textvariable=Expiry_day_combo)
+Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","23 JUN22","30 JUN22","JUN","7 JUL22"],width=11,textvariable=Expiry_day_combo)
 Expiry_day_combo_box1.place(x=120, y=110)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
 # Combobox 2
-BN_Combo_values=["ITM1","ITM","ATM","OTM","OTM2"]
+BN_Combo_values=["ITM2","ITM1","ITM","ATM","OTM","OTM1","OTM2"]
 Strike_combo=tk.StringVar()
-Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=10,textvariable=Strike_combo)
+Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=11,textvariable=Strike_combo)
 Strike_combo_box1.place(x=120, y=160)
-Strike_combo_box1.current(2)
+Strike_combo_box1.current(3)
 Strike_combo.trace('w',my_update)
 # Combobox 3
 qty_combo_value=["1","2","3","4","5"]
@@ -571,5 +589,5 @@ qty_combo_box1.place(x=440, y=150)
 qty_combo_box1.current(0)
 qty_combo.trace('w',orderData)
 
-root.mainloop()
 
+root.mainloop()
