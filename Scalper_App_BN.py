@@ -1,4 +1,3 @@
-## Scalper App to buy the option with one click with SL & Target
 from time import sleep
 from tkinter import *
 import tkinter as tk
@@ -26,36 +25,52 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
 
 def log(msg, *args):
     logging.info(msg, *args)
-    print(msg, *args)
+    #print(msg, *args)
+def errorlog(msg1,*args):
+    logging.error(msg1, *args)
+    #print(msg1,*args)
 
 #enable dbug to see request and responses
 #logging.basicConfig(level=logging.DEBUG)
 
 api = ShoonyaApiPy()
 
+##Style 
+
+lbl_fonts=("Helvatical bold",10)
+btn_fonts=("Helvatical bold",10)
+btn_fg="white"
+btn_bg="black"
+lbl_fg='white'
+lbl_bg='#ffffe6'
+m2m_fonts=("Helvatical bold",11)
+time_font=('Helvatical bold', 10, 'bold')
+time_bg='green'
+time_fg='white'
 
 def Login(): #Login function get the api login + username and cash margin
     global ret
-    ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
-    usersession=ret['susertoken']
-    print(usersession)
-    username = ret['uname']
-    username = "Welcome" + " " + username + "!"
-    Welcome_lbl2 = Label(root, text=username, fg="white",font=("Helvatical bold",10), bg="Green")
-    Welcome_lbl2.place(x=130, y=20)
-    log(f'Login to the account {username}')
+    try:
+        ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
+        usersession=ret['susertoken']
+        username = ret['uname']
+        username = "Welcome" + " " + username + "!"
+        Welcome_lbl2 = Label(root, text=username, fg=lbl_fg,font=lbl_fonts, bg="Green")
+        Welcome_lbl2.place(x=130, y=20)
+        log(f'Sucessfully Login to the account {username}')
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
 
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
 
     global bn_nifty_lp
-    global sh
+    #global sh
     bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
     bn_nifty_lp=float(bn_nifty_lp['lp'])
     print(bn_nifty_lp)
     pos_data=api.get_positions()
     if pos_data == None:
-        print("No Positions Data available today")
-        log(f'No Positions Data available today')
+        log(f'No Positions Data available for today')
     else:
         mtm = 0
         pnl = 0
@@ -64,8 +79,8 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
             pnl += float(i['rpnl'])
             day_m2m = mtm + pnl
             day_m2m_total = "{:.2f}".format(day_m2m)
-            m2m = Label(root, text=day_m2m_total, bg="white",font=("Helvatical bold",11))
-            m2m.place(x=260, y=210)
+            m2m = Label(root, text=day_m2m_total, bg=lbl_fg,font=lbl_fonts)
+            m2m.place(x=280, y=210)
 
             if day_m2m > 0:
                 m2m.config(fg="Green")
@@ -80,11 +95,11 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
     
     margin_available = round(((float((limit['cash']))) - marginused),2)
     margin_available_1lot=margin_available/25
-    print("With the fund avialble you can get lot of BN with price:",margin_available_1lot)
+    print("With the avialble fund you can get one lot of BN with price:",margin_available_1lot)
 
     Label(root, text=margin_available,bg="green",fg="white").grid(row=1, padx=415, pady=20)
     # Margin Avbl Label
-    Margin_Avbl_lbl1 = Label(root, text='Avbl_Margin:',font=("Helvatical bold",10),bg='#ffffe6')
+    Margin_Avbl_lbl1 = Label(root, text='Avbl_Margin:',font=lbl_fonts,bg=lbl_bg)
     Margin_Avbl_lbl1.place(x=320, y=20)
     log(f'BN last price updated  {bn_nifty_lp}')
     log(f'The fund balance updated {margin_available}')
@@ -141,14 +156,14 @@ def check_order_stat(): # Check the order details to place the SL order
             if order_no==row["norenordno"]:
                 order_status=row["status"]
                 print("orderstatus:", order_status)
-                log(f'Checking order status for order number {order_no} and order status is {order_status}')
+                log(f'[OrderStatus]Checking order status for order number {order_no} and the order status is {order_status}')
                 #print(row["status"],row["tsym"])
 
     # #order status to displayed in GUI
         ord_stat_entry.delete(0,"end")
         ord_stat_entry.insert(0,order_status)
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 Symbol_Name = []
 order_no=[]
@@ -169,10 +184,10 @@ def placeCallOrder():  # Place the Call option order
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
         order_no=order_no['norenordno']
-        log(f'Placed call order and order number is {order_no}')
+        log(f'[OrderPlaced] Placed call { tsym_ce } order at {price_ltp} x Quantity  {qty} and order number is {order_no}')
         place_sl_order_call()
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 def place_sl_order_call():
     global sl_order_number
@@ -183,17 +198,17 @@ def place_sl_order_call():
             sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_ce, quantity=qty, discloseqty=0,
                                         price_type='SL-LMT', price=stoploss_limit_ce, trigger_price=stoploss_limit_trigger_ce,retention='DAY', remarks='my_order_001')
             sl_order_number=sl_order_number['norenordno']
-            log(f'Placed SL order for call position and order number is {sl_order_number}')
+            log(f'[SLOrderPlaced] Placed SL order for call position and order number is {sl_order_number}')
         elif order_status=='OPEN':
             ret = api.cancel_order(orderno=order_no)
             check_order_stat()
-            log(f'Order Still open, since cancelled to avoid the loop make place again')
+            log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
             pass
         elif order_status=='REJECTED':
-            log(f'Order Rejected')
+            log(f'[OrderRejected] Order Rejected')
             
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 def placePutOrder():   # Place the Put option order
     global order_no
@@ -210,10 +225,10 @@ def placePutOrder():   # Place the Put option order
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
         order_no=order_no['norenordno']
-        log(f'Placed Put order and order number is {order_no}')
+        log(f'[OrderPlaced] Placed Put { tsym_pe } order at {price_ltp} x Quantity  {qty} and order number is {order_no}')
         place_sl_order_put()
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 def place_sl_order_put():
     global sl_order_number
@@ -224,35 +239,37 @@ def place_sl_order_put():
             sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_pe, quantity=qty, discloseqty=0,
                                         price_type='SL-LMT', price=stoploss_limit_pe, trigger_price=stoploss_limit_trigger_pe,retention='DAY', remarks='my_order_001')
             sl_order_number=sl_order_number['norenordno']
-            log(f'Placed SL order for put position and order number is {sl_order_number}')
+            log(f'[SLOrderPlaced] Placed SL order for put position and order number is {sl_order_number}')
         elif order_status=='OPEN':
             cancel_ord = api.cancel_order(orderno=order_no)
             check_order_stat()
-            log(f'Order Still open, since cancelled to avoid the loop make place again')
+            log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
             pass
         elif order_status=='REJECTED':
-            log(f'order rejected')
+            log(f'[OrderRejected]order rejected')
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 def cancel_sl_order():
     try:
         cancel_sl_order=api.cancel_order(orderno=sl_order_number)
         log(f'cancelled SL order {sl_order_number}, before squre off the position')
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 def squreoff(): # squreoff all the open order manually
-    cancel_sl_order()
-    log(f'squre off the open postions')
-    squreoff_Pos=api.get_positions()
-    squreoff_Pos=pd.DataFrame(squreoff_Pos)
-    row=0
-    for row in squreoff_Pos.to_dict("records"):
-        if int(row["netqty"])>0:
-            print(row["tsym"])
-            api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=row["tsym"], quantity=int(row["netqty"]),discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
-
+    try:
+        cancel_sl_order()
+        log(f'squre off the open postions')
+        squreoff_Pos=api.get_positions()
+        squreoff_Pos=pd.DataFrame(squreoff_Pos)
+        row=0
+        for row in squreoff_Pos.to_dict("records"):
+            if int(row["netqty"])>0:
+                print(row["tsym"])
+                api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=row["tsym"], quantity=int(row["netqty"]),discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
 stopPos=False
 def pos(): # Display the Position Details
     global profitLabel
@@ -271,11 +288,7 @@ def pos(): # Display the Position Details
                     pnlpos=float(row["urmtom"])
                     netqty=float(row["netqty"])
 
-                Label(root,text='Symbol',width=24,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=40,y=250)       
-                Label(root,text='Avg',width=8,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=240,y=250)
-                Label(root,text='Ltp',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=313,y=250)
-                Label(root,text='Qty',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=403,y=250)
-                Label(root,text='Pnl',width=10,bg="cornsilk3",fg="black",font=("Arial Black",10)).place(x=493,y=250)
+
             if netqty != 0:
                 pos_symbol=Label(root,text=symbol,width=24,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_symbol.place(x=40,y=280) 
@@ -283,7 +296,7 @@ def pos(): # Display the Position Details
                 pos_Avg.place(x=240,y=280)
                 pos_ltp=Label(root,text=liveprice,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_ltp.place(x=315,y=280)
-                pos_netqty=Label(root,text=netqty,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_netqty=Label(root,text=netqty,width=8,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_netqty.place(x=400,y=280)
                 profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
                 profitLabel.place(x=493, y=280)
@@ -292,20 +305,15 @@ def pos(): # Display the Position Details
                 else:
                     profitLabel.config(bg="Red")
             elif netqty == 0:
-                print("the loop broken since no open Pos")
-                log(f'No Open Position since the loop broken')
+                log(f'No Open Position since the loop brokened')
                 global stopPos
                 if(stopPos==True):
                     stopPos=False
                     break
                 break
-                
-             
-                   
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 #orderData funtion to collect sl,tager,qty data
-
 def orderData(*args): # Get the orderData like SL,Target,QTY
     global sl
     #global target
@@ -316,7 +324,7 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
         #qty=qtycalldata.get()
         log(f'collected the SL: {sl}, QTY:{qty}')
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
     
     try: 
         qty_value=qty_combo_box1.get()
@@ -334,17 +342,17 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
             qty=qty_to_lot.get('5')
         
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
     try:
         maxloss = sl * qty
-        maxloss_lbl1 = Label(root, text='Max Loss',bg='#ffffe6',font=("Helvatical bold",10))
+        maxloss_lbl1 = Label(root, text='Max Loss',bg=lbl_bg,font=lbl_fonts)
         maxloss_lbl1.place(x=250, y=120)
-        maxloss_lbl2 = Label(root, text=maxloss,bg='#ffffe6',font=("Helvatical bold",10))
+        maxloss_lbl2 = Label(root, text=maxloss,bg=lbl_bg,font=lbl_fonts)
         maxloss_lbl2.place(x=325, y=120)
         
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 
     
@@ -356,7 +364,7 @@ def my_expiry_update(*args): # Get the expiry date from Combobox
         Expiry_day=Expiry_day_combo_box1.get()
         log(f'Expiry day selected {Expiry_day}')
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 def my_update(*args): # Get the token details according to the Comobox selection & update the call & pur strike
     global tsym_ce
@@ -439,7 +447,7 @@ def my_update(*args): # Get the token details according to the Comobox selection
         token_pe=res_pe['values'][0]['token']
         update_ltp()
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
     
 def trade_book(): # Display the Help child window
    
@@ -453,7 +461,7 @@ def trade_book(): # Display the Help child window
         trade_b=pd.DataFrame(trade_b)
         
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 
 def update_ltp(): # Update the strike price in tkinter window
@@ -469,7 +477,7 @@ def update_ltp(): # Update the strike price in tkinter window
         display_put_ltp.place(x=560,y=120)
         log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
     except Exception as e:
-        log(f'an exception occurred :: {e}')
+        errorlog(f'an exception occurred :: {e}')
 
 root=Tk()
 root.geometry("650x350")
@@ -477,6 +485,7 @@ root.config(background="#ffffe6")
 root.title('Richdotcom Scalper App')
 style= ttk.Style()
 style.theme_use('clam')
+#style.theme_use('winnative') ## enable this for windows
 root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotcom.png'))
 #root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
 
@@ -485,100 +494,235 @@ def time():
     lbl.config(text = string)
     lbl.after(1000, time)
   
-# Styling the label widget so that clock
-# will look more attractive
-lbl = Label(root, font = ('Helvatical bold', 10, 'bold'),
-            background = 'green',
-            foreground = 'white')
+lbl = Label(root, font = time_font,
+            background = time_bg,
+            foreground = time_fg)
 lbl.place(x=530,y=310)
 time()
 
+#### BUTTONS####
 # Login button
-Login_btn1 = Button(root, text='Login',font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(0))
-Login_btn1.place(x=40, y=10)
-#Refresh button
-Refresh_btn1 = Button(root, text='Refresh',width=5,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(3))
-Refresh_btn1.place(x=490, y=10)
-#Help Button
-tb_btn1 = Button(root, text='Orders',width=6,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(1))
-tb_btn1.place(x=570, y=10)
+Login_btn1 = Button(root, 
+                    text='Login',
+                    font=btn_fonts,
+                    fg=btn_fg,
+                    bg=btn_bg,
+                    command=lambda:startThread(0))
+Login_btn1.place(x=40, 
+                 y=10)
+#Orders Button
+tb_btn1 = Button(root,
+                 text='Orders',
+                 font=btn_fonts,
+                 fg=btn_fg,
+                 bg=btn_bg,
+                 command=lambda:startThread(1))
+tb_btn1.place(x=570, 
+              y=10)
 # CE BUY button
-CE_BUY_Btn1 = Button(root, text='Buy',font=("Helvatical bold",10),width=3,fg="white",bg="black",command=lambda:startThread(2))
-CE_BUY_Btn1.place(x=500, y=150)
+CE_BUY_Btn1 = Button(root, 
+                     text='Buy',
+                     font=btn_fonts,
+                     fg=btn_fg,
+                     bg=btn_bg,
+                     command=lambda:startThread(2))
+CE_BUY_Btn1.place(x=500, 
+                  y=150)
+#Refresh button
+Refresh_btn1 = Button(root,
+                      text='Refresh',
+                      font=btn_fonts,
+                      fg=btn_fg,
+                      bg=btn_bg,
+                      command=lambda:startThread(3))
+Refresh_btn1.place(x=490,
+                   y=10)
 # PE BUY button
-PE_BUY_Btn1 = Button(root, text='Buy',width=3,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(4))
-PE_BUY_Btn1.place(x=560, y=150)
-#SL text & entry box
-stoploss=IntVar()
-sl_text = Label(root, text='SL:',bg='#ffffe6',font=("Helvatical bold",10))
-sl_text.place(x=250, y=80)
-loss=Entry(root, width=5,textvariable=stoploss)
-loss.place(x=320, y=80)
-stoploss.trace("w", orderData)
-#Target text $ entry box
-# targetdata=tk.IntVar()
-# target_text = Label(root, text='Target:',font=("Helvatical bold",11))
-# target_text.place(x=250, y=110)
-# target_entry=Entry(root,width=5,textvariable=targetdata)
-# target_entry.place(x=320, y=110)
-# targetdata.trace("w", orderData)
-## qty side
-# qtycalldata=tk.IntVar()
-# qty_call_entry=tk.Entry(root,width=3,textvariable=qtycalldata)
-# qty_call_entry.place(x=440, y=150)
-# qtycalldata.trace("w", orderData)
-# Symbol Label
-Symbol_lbl1 = Label(root, text='Symbol:',bg='#ffffe6',font=("Helvatical bold",10))
-Symbol_lbl1.place(x=40, y=60)
-# Expiry day Label
-Expiry_date_lbl1 = Label(root, text='Expiry:',bg='#ffffe6',font=("Helvatical bold",10))
-Expiry_date_lbl1.place(x=40, y=110)
-# Strike Label
-Strike_lbl1 = Label(root, text='Strike:',bg='#ffffe6',font=("Helvatical bold",10))
-Strike_lbl1.place(x=40, y=160)
-###
-ord_stat = Label(root, text='Order Stat:',bg='#ffffe6',font=("Helvatical bold",10))
-ord_stat.place(x=40, y=310)
-ord_stat_entry=Entry(root,width=10)
-ord_stat_entry.place(x=130,y=310)
-# Positions button
-Positions_btn = Button(root, text='Positions',width=6,font=("Helvatical bold",10),bg="black",fg="white",command=lambda:startThread(6))
-Positions_btn.place(x=40, y=200)
-#Profit m2m
-m2m_lbl1 = Label(root, text='m2m:',bg='#ffffe6',font=("Helvatical bold",11))
-m2m_lbl1.place(x=200, y=210)
+PE_BUY_Btn1 = Button(root,
+                     text='Buy',
+                     font=btn_fonts,
+                     fg=btn_fg,
+                     bg=btn_bg,
+                     command=lambda:startThread(4))
+PE_BUY_Btn1.place(x=560,
+                  y=150)
 #squreoff button 
-squreoff_Btn1 = Button(root, text='SqureOff',width=6,font=("Helvatical bold",10),fg="white",bg="black",command=lambda:startThread(5))
-squreoff_Btn1.place(x=120, y=200)
-# CALL Label
-CALL_lbl1 = Label(root, text='CALL',bg='#ffffe6',font=("Helvatical bold",10))
-CALL_lbl1.place(x=500, y=60)
-call_strike=Entry(root,width=5)
-call_strike.place(x=500,y=90)
-# PUT Label
-PUT_lbl1 = Label(root, text='PUT',bg='#ffffe6',font=("Helvatical bold",10))
-PUT_lbl1.place(x=560, y=60)
-put_strike=Entry(root,width=5)
-put_strike.place(x=560,y=90)
-# Strike Price Label
-Strike_price_lbl1 = Label(root, text='Strike:',bg='#ffffe6',font=("Helvatical bold",10))
-Strike_price_lbl1.place(x=400, y=90)
-# Strike Label
-price_lable = Label(root, text='Price:',bg='#ffffe6',font=("Helvatical bold",10))
-price_lable.place(x=400, y=120)
-# QTY Label
-QTY_lbl1 = Label(root, text='Lot:',bg='#ffffe6',font=("Helvatical bold",10))
-QTY_lbl1.place(x=400, y=150)
+squreoff_Btn1 = Button(root,
+                       text='SqureOff',
+                       font=btn_fonts,
+                       fg=btn_fg,
+                       bg=btn_bg,
+                       command=lambda:startThread(5))
+squreoff_Btn1.place(x=130,
+                    y=200)
+# Positions button
+Positions_btn = Button(root,
+                       text='Positions',
+                       font=btn_fonts,
+                       bg=btn_bg,
+                       fg=btn_fg,
+                       command=lambda:startThread(6))
+Positions_btn.place(x=40,
+                    y=200)
 
+### LABEL 
+
+#POS LABELS
+lab_symbol=Label(root,
+                 text='Symbol',
+                 width=24,
+                 bg="cornsilk3",
+                 fg="black",
+                 font=("Arial Black",10))
+lab_symbol.place(x=40,
+                 y=250)       
+lab_Avg=Label(root,
+              text='Avg',
+              width=8,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+lab_Avg.place(x=240,
+              y=250)
+lab_ltp=Label(root,
+              text='Ltp',
+              width=10,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+lab_ltp.place(x=313,
+              y=250)
+lab_qty=Label(root,
+              text='Qty',
+              width=10,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+lab_qty.place(x=403,
+              y=250)
+lab_pnl=Label(root,
+              text='Pnl',
+              width=10,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+lab_pnl.place(x=493,
+              y=250)
+# Symbol Label
+Symbol_lbl1 = Label(root,
+                    text='Symbol:',
+                    bg=lbl_bg,
+                    font=lbl_fonts)
+Symbol_lbl1.place(x=40,
+                  y=60)
+# Expiry day Label
+Expiry_date_lbl1 = Label(root,
+                         text='Expiry:',
+                         bg=lbl_bg,
+                         font=lbl_fonts)
+Expiry_date_lbl1.place(x=40,
+                       y=110)
+# Strike Label
+Strike_lbl1 = Label(root,
+                    text='Strike:',
+                    bg=lbl_bg,
+                    font=lbl_fonts)
+Strike_lbl1.place(x=40,
+                  y=160)
+#Profit m2m
+m2m_lbl1 = Label(root,
+                 text='m2m:',
+                 bg=lbl_bg,
+                 font=m2m_fonts)
+m2m_lbl1.place(x=230,
+               y=210)
+#SL Label 
+sl_text = Label(root,
+                text='SL:',
+                bg=lbl_bg,
+                font=lbl_fonts)
+sl_text.place(x=250,
+              y=80)
+#Order Stat Label
+ord_stat = Label(root,
+                 text='Order Stat:',
+                 bg=lbl_bg,
+                 font=lbl_fonts)
+ord_stat.place(x=40,
+               y=310)
+# CALL Label
+CALL_lbl1 = Label(root,
+                  text='CALL',
+                  bg=lbl_bg,
+                  font=lbl_fonts)
+CALL_lbl1.place(x=500,
+                y=60)
+# PUT Label
+PUT_lbl1 = Label(root,
+                 text='PUT',
+                 bg=lbl_bg,
+                 font=lbl_fonts)
+PUT_lbl1.place(x=560,
+               y=60)
+
+# Strike Price Label
+Strike_price_lbl1 = Label(root,
+                          text='Strike:',
+                          bg=lbl_bg,
+                          font=lbl_fonts)
+Strike_price_lbl1.place(x=400,
+                        y=90)
+# Strike Label
+price_lable = Label(root, 
+                    text='Price:',
+                    bg=lbl_bg,
+                    font=lbl_fonts)
+price_lable.place(x=400,
+                  y=120)
+# QTY Label
+QTY_lbl1 = Label(root, 
+                 text='Lot:',
+                 bg=lbl_bg,
+                 font=lbl_fonts)
+QTY_lbl1.place(x=400, 
+               y=150)
+
+### Entry box
+### SL Entry
+stoploss=IntVar()
+loss=Entry(root,
+           width=5,
+           textvariable=stoploss)
+loss.place(x=320,
+           y=80)
+stoploss.trace("w", orderData)
+
+### Order Stat
+ord_stat_entry=Entry(root,
+                     width=10)
+ord_stat_entry.place(x=130,
+                     y=310)
+## CALL Entry box 
+call_strike=Entry(root,
+                  width=5)
+call_strike.place(x=500,
+                  y=90)
+## PUT Entry box
+put_strike=Entry(root,
+                 width=5)
+put_strike.place(x=560,
+                 y=90)
+
+### Combobox
 # Combobox 0
 Symbol_combo_box1 = ttk.Combobox(root,width=11)
 Symbol_combo_box1['values'] = ("BANKNIFTY","NIFTY")
-Symbol_combo_box1.place(x=120, y=60)
+Symbol_combo_box1.place(x=120,y=60)
 Symbol_combo_box1.current(0)
 index=Symbol_combo_box1.get()
 #Combobox 1
 Expiry_day_combo=tk.StringVar() # string variable 
-Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","23 JUN22","30 JUN22","JUN","7 JUL22"],width=11,textvariable=Expiry_day_combo)
+Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","JUN","7 JUL22","14 JUL22","21 JUL22",],width=11,textvariable=Expiry_day_combo)
 Expiry_day_combo_box1.place(x=120, y=110)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
@@ -597,5 +741,5 @@ qty_combo_box1.place(x=440, y=150)
 qty_combo_box1.current(0)
 qty_combo.trace('w',orderData)
 
-
+## Main loop
 root.mainloop()
