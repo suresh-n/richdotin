@@ -64,10 +64,12 @@ def Login(): #Login function get the api login + username and cash margin
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
 
     global bn_nifty_lp
+    global nifty_lp
     #global sh
-    bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
-    bn_nifty_lp=float(bn_nifty_lp['lp'])
-    print(bn_nifty_lp)
+    # bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
+    # nifty_lp=api.get_quotes('NSE', 'Nifty 50')
+    # bn_nifty_lp=float(bn_nifty_lp['lp'])
+    # nifty_lp=float(nifty_lp['lp'])
     pos_data=api.get_positions()
     if pos_data == None:
         log(f'No Positions Data available for today')
@@ -79,7 +81,7 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
             pnl += float(i['rpnl'])
             day_m2m = mtm + pnl
             day_m2m_total = "{:.2f}".format(day_m2m)
-            m2m = Label(root, text=day_m2m_total, bg=lbl_fg,font=lbl_fonts)
+            m2m = Label(root, text=day_m2m_total,bg=lbl_fg,font=lbl_fonts,width=10)
             m2m.place(x=280, y=210)
 
             if day_m2m > 0:
@@ -296,8 +298,8 @@ def pos(): # Display the Position Details
                 pos_Avg.place(x=240,y=280)
                 pos_ltp=Label(root,text=liveprice,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_ltp.place(x=315,y=280)
-                pos_netqty=Label(root,text=netqty,width=8,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_netqty.place(x=400,y=280)
+                pos_netqty=Label(root,text=netqty,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_netqty.place(x=405,y=280)
                 profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
                 profitLabel.place(x=493, y=280)
                 if pnlpos > 0:
@@ -314,21 +316,34 @@ def pos(): # Display the Position Details
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 #orderData funtion to collect sl,tager,qty data
-def orderData(*args): # Get the orderData like SL,Target,QTY
-    global sl
-    #global target
+
+bn_nifty_lp=[]
+
+def my_expiry_update(*args): # Get the expiry date from Combobox
+    global Expiry_day
+    try:
+        Expiry_day=Expiry_day_combo_box1.get()
+        log(f'Expiry day selected {Expiry_day}')
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
+def my_index (*args):
+    global index_symbol
     global qty
 
     try:
-        sl=float(stoploss.get())
-        #qty=qtycalldata.get()
-        log(f'collected the SL: {sl}, QTY:{qty}')
+        index_symbol=index_combo1box.get()
+        log(f'index selected is: {index_symbol}')
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
-    
+
     try: 
-        qty_value=qty_combo_box1.get()
-        qty_to_lot={"1": 25, "2": 50, "3": 75, "4": 100, "5": 125}
+        if index_symbol == "NIFTY":
+            qty_value=qty_combo_box1.get()
+            qty_to_lot={"1": 50, "2": 100, "3": 150, "4": 200, "5": 250}
+        elif index_symbol == "BANKNIFTY":
+            qty_value=qty_combo_box1.get()
+            qty_to_lot={"1": 25, "2": 50, "3": 75, "4": 100, "5": 125}
 
         if qty_value == "1":
             qty=qty_to_lot.get('1')
@@ -343,62 +358,78 @@ def orderData(*args): # Get the orderData like SL,Target,QTY
         
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
-
-    try:
-        maxloss = sl * qty
-        maxloss_lbl1 = Label(root, text='Max Loss',bg=lbl_bg,font=lbl_fonts)
-        maxloss_lbl1.place(x=250, y=120)
-        maxloss_lbl2 = Label(root, text=maxloss,bg=lbl_bg,font=lbl_fonts)
-        maxloss_lbl2.place(x=325, y=120)
-        
-    except Exception as e:
-        errorlog(f'an exception occurred :: {e}')
-
-
     
-bn_nifty_lp=[]
 
-def my_expiry_update(*args): # Get the expiry date from Combobox
-    global Expiry_day
-    try:
-        Expiry_day=Expiry_day_combo_box1.get()
-        log(f'Expiry day selected {Expiry_day}')
-    except Exception as e:
-        errorlog(f'an exception occurred :: {e}')
-
-def my_update(*args): # Get the token details according to the Comobox selection & update the call & pur strike
+def my_strike(*args): # Get the token details according to the Comobox selection & update the call & pur strike
     global tsym_ce
     global tsym_pe
     global token_ce
     global token_pe
 
+    Strike_selection=Strike_combo_box1.get()    
+    print(Strike_selection)
+
+    bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
+    nifty_lp=api.get_quotes('NSE', 'Nifty 50')
+    bn_nifty_lp=float(bn_nifty_lp['lp'])
+    nifty_lp=float(nifty_lp['lp'])
+
     try:
-        Strike_selection=Strike_combo_box1.get()    
-        round_number = math.fmod(bn_nifty_lp, 100) # round the strike
-        atm = bn_nifty_lp - round_number
-        itm = atm - 100
-        itm1= atm - 200
-        itm2= atm - 300
-        otm = atm + 100
-        otm1 = atm + 200
-        otm2 = atm + 300
+        if index_symbol == "NIFTY":
+            print("yes")
+            nf_round_number = math.fmod(nifty_lp, 50)
+            nf_atm = nifty_lp - nf_round_number
+            nf_itm = nf_atm - 50
+            nf_itm1= nf_atm - 100
+            nf_itm2= nf_atm - 150
+            nf_otm = nf_atm + 50
+            nf_otm1 = nf_atm + 100
+            nf_otm2 = nf_atm + 150
+            in_the_money1 = 'itm2'
+            in_the_money1 = 'itm1'
+            in_the_money = 'itm'
+            at_the_money = 'atm'
+            out_of_the_money = 'otm'
+            out_of_the_money1 = 'otm1'
+            out_of_the_money1 = 'otm2'
 
-        in_the_money1 = 'itm2'
-        in_the_money1 = 'itm1'
-        in_the_money = 'itm'
-        at_the_money = 'atm'
-        out_of_the_money = 'otm'
-        out_of_the_money1 = 'otm1'
-        out_of_the_money1 = 'otm2'
+            bn_list={"itm2": nf_itm2,"itm1": nf_itm1, "itm": nf_itm, "atm": nf_atm, "otm": nf_otm, "otm1": nf_otm1,"otm2": nf_otm2}
+            in_the_money2 = 'itm2'
+            in_the_money1 = 'itm1'
+            in_the_money = 'itm'
+            at_the_money = 'atm'
+            out_of_the_money = 'otm'
+            out_of_the_money1 = 'otm1'
+            out_of_the_money2 = 'otm2'
 
-        bn_list={"itm2": itm2,"itm1": itm1, "itm": itm, "atm": atm, "otm": otm, "otm1": otm1,"otm2": otm2}
-        in_the_money2 = 'itm2'
-        in_the_money1 = 'itm1'
-        in_the_money = 'itm'
-        at_the_money = 'atm'
-        out_of_the_money = 'otm'
-        out_of_the_money1 = 'otm1'
-        out_of_the_money2 = 'otm2'
+        elif index_symbol == "BANKNIFTY":
+            print("no")
+            bn_round_number = math.fmod(bn_nifty_lp, 100) # round the strike
+            bn_atm = bn_nifty_lp - bn_round_number
+            bn_itm = bn_atm - 100
+            bn_itm1= bn_atm - 200
+            bn_itm2= bn_atm - 300
+            bn_otm = bn_atm + 100
+            bn_otm1 =bn_atm + 200
+            bn_otm2 =bn_atm + 300
+
+            in_the_money1 = 'itm2'
+            in_the_money1 = 'itm1'
+            in_the_money = 'itm'
+            at_the_money = 'atm'
+            out_of_the_money = 'otm'
+            out_of_the_money1 = 'otm1'
+            out_of_the_money1 = 'otm2'
+
+            bn_list={"itm2": bn_itm2,"itm1": bn_itm1, "itm": bn_itm, "atm": bn_atm, "otm": bn_otm, "otm1": bn_otm1,"otm2": bn_otm2}
+            in_the_money2 = 'itm2'
+            in_the_money1 = 'itm1'
+            in_the_money = 'itm'
+            at_the_money = 'atm'
+            out_of_the_money = 'otm'
+            out_of_the_money1 = 'otm1'
+            out_of_the_money2 = 'otm2'
+     
         combo_value = Strike_selection
 
         if combo_value == "ATM":
@@ -429,17 +460,21 @@ def my_update(*args): # Get the token details according to the Comobox selection
         call_strike.insert(0,strike_price_Ce)
         put_strike.delete(0,"end")
         put_strike.insert(0,strike_price_Pe)
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
 
 # write the logic here to get the token 
+    try:
         Symbol_strike = strike_price_Ce
-        Symbol_index = index
+        Symbol_index = index_symbol
         Symbol_Expiry_day = Expiry_day
         ScripName_CE=f'{Symbol_index} {Symbol_Expiry_day} {Symbol_strike}'+" "+'CE'
         res_ce = api.searchscrip('NFO',searchtext=ScripName_CE)
         tsym_ce=res_ce['values'][0]['tsym']
         token_ce=res_ce['values'][0]['token']
         Symbol_strike = strike_price_Pe
-        Symbol_index = index
+        Symbol_index = index_symbol
         Symbol_Expiry_day = Expiry_day
         ScripName_PE=f'{Symbol_index} {Symbol_Expiry_day} {Symbol_strike}'+" "+'PE'
         res_pe = api.searchscrip('NFO',searchtext=ScripName_PE)
@@ -448,7 +483,22 @@ def my_update(*args): # Get the token details according to the Comobox selection
         update_ltp()
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
-    
+
+#qty_value=0    
+def loss_stop(*args):
+    global sl
+
+    try:
+        sl=float(stoploss.get())
+        #qty=qtycalldata.get()
+        log(f'collected the SL: {sl}, QTY:{qty}')
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
+
+#def orderData(*args): # Get the orderData like SL,Target,QTY
+    #global target
+
 def trade_book(): # Display the Help child window
    
     try:
@@ -614,14 +664,14 @@ Symbol_lbl1 = Label(root,
                     bg=lbl_bg,
                     font=lbl_fonts)
 Symbol_lbl1.place(x=40,
-                  y=60)
+                  y=110)
 # Expiry day Label
 Expiry_date_lbl1 = Label(root,
                          text='Expiry:',
                          bg=lbl_bg,
                          font=lbl_fonts)
 Expiry_date_lbl1.place(x=40,
-                       y=110)
+                       y=60)
 # Strike Label
 Strike_lbl1 = Label(root,
                     text='Strike:',
@@ -695,7 +745,7 @@ loss=Entry(root,
            textvariable=stoploss)
 loss.place(x=320,
            y=80)
-stoploss.trace("w", orderData)
+stoploss.trace("w", loss_stop)
 
 ### Order Stat
 ord_stat_entry=Entry(root,
@@ -715,15 +765,17 @@ put_strike.place(x=560,
 
 ### Combobox
 # Combobox 0
-Symbol_combo_box1 = ttk.Combobox(root,width=11)
-Symbol_combo_box1['values'] = ("BANKNIFTY","NIFTY")
-Symbol_combo_box1.place(x=120,y=60)
-Symbol_combo_box1.current(0)
-index=Symbol_combo_box1.get()
+index_values1=["Select Index","NIFTY","BANKNIFTY"]
+index_combo1=tk.StringVar()
+index_combo1box=ttk.Combobox(root, values=index_values1,width=11,textvariable=index_combo1)
+index_combo1box.place(x=120,y=110)
+index_combo1box.current(0)
+index_combo1.trace('w', my_index)
+
 #Combobox 1
 Expiry_day_combo=tk.StringVar() # string variable 
-Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","JUN","7 JUL22","14 JUL22","21 JUL22",],width=11,textvariable=Expiry_day_combo)
-Expiry_day_combo_box1.place(x=120, y=110)
+Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","30 JUN22","7 JUL22","14 JUL22","21 JUL22",],width=11,textvariable=Expiry_day_combo)
+Expiry_day_combo_box1.place(x=120, y=60)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
 # Combobox 2
@@ -732,14 +784,14 @@ Strike_combo=tk.StringVar()
 Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=11,textvariable=Strike_combo)
 Strike_combo_box1.place(x=120, y=160)
 Strike_combo_box1.current(3)
-Strike_combo.trace('w',my_update)
+Strike_combo.trace('w',my_strike)
 # Combobox 3
 qty_combo_value=["1","2","3","4","5"]
 qty_combo=tk.StringVar()
 qty_combo_box1 = ttk.Combobox(root, values=qty_combo_value,width=3,textvariable=qty_combo)
 qty_combo_box1.place(x=440, y=150)
 qty_combo_box1.current(0)
-qty_combo.trace('w',orderData)
+qty_combo.trace('w',my_index)
 
 ## Main loop
 root.mainloop()
