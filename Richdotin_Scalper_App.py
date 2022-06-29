@@ -3,6 +3,7 @@ from tkinter import *
 import tkinter as tk
 from tkinter import ttk
 import threading,json,math,sqlite3,logging,config
+from numpy import empty
 from datetime import datetime, timedelta
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -11,6 +12,12 @@ from api_helper import ShoonyaApiPy
 import pandas as pd
 import time
 #from threading import Timer
+
+import configparser
+from pathlib import Path
+config = configparser.ConfigParser()
+config.read('config.ini')
+
 
 start = datetime.now()
 print(start)
@@ -47,29 +54,85 @@ m2m_fonts=("Helvatical bold",11)
 time_font=('Helvatical bold', 10, 'bold')
 time_bg='green'
 time_fg='white'
-
+top_lbl_fg="black"
+top_lbl_bg='#ffffe6'
+top_lbl_font=("Helvatical bold",11)
+def write_test():
+        get_user=get_username.get()
+        get_password=get_pwd.get()
+        get_factor2_1=get_factor2.get()
+        get_vc_1=get_vc.get()
+        get_apikey_1=get_apikey.get()
+        config.set("CRED", "user", get_user )
+        config.set("CRED", "pwd", get_password)
+        config.set("CRED", "factor2",get_factor2_1)
+        config.set("CRED", "vc",get_vc_1)
+        config.set("CRED", "app_key",get_apikey_1)
+        with open('test.ini', 'w') as configfile:
+            config.write(configfile)
+            log(f'The test.ini file filled with the Credential details')
+        top.destroy()
+        
 def Login(): #Login function get the api login + username and cash margin
+
     global ret
-    try:
-        ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
-        usersession=ret['susertoken']
-        username = ret['uname']
-        username = "Welcome" + " " + username + "!"
-        Welcome_lbl2 = Label(root, text=username, fg=lbl_fg,font=lbl_fonts, bg="Green")
-        Welcome_lbl2.place(x=130, y=20)
-        log(f'Sucessfully Login to the account {username}')
-    except Exception as e:
-        errorlog(f'an exception occurred :: {e}')
+    global get_username,get_pwd,get_factor2,get_vc,get_apikey
+    global top
+    if not config.get("CRED","user"):
+        log("CRED Variable is empty so getting variable")
+
+        top= Toplevel(root)
+        top.geometry("300x280")
+        top.title("Richdotin Scalping App")
+        top.config(background="#ffffe6")
+        lbl_username=Label(top,text="User:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
+        lbl_username.place(x=30,y=20)
+        lbl_password=Label(top,text="Password:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
+        lbl_password.place(x=30,y=60)
+        lbl_factor2=Label(top,text="Factor2:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
+        lbl_factor2.place(x=30,y=100)
+        lbl_vc=Label(top,text="VC:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
+        lbl_vc.place(x=30,y=140)
+        lbl_api_key=Label(top,text="api_key:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
+        lbl_api_key.place(x=30,y=180)
+        get_username=Entry(top,width=15,borderwidth=0)
+        get_username.place(x=120,y=20)
+        get_pwd=Entry(top,width=15,show="*",borderwidth=0)
+        get_pwd.place(x=120,y=60)
+        get_factor2=Entry(top,width=15,borderwidth=0)
+        get_factor2.place(x=120,y=100)
+        get_vc=Entry(top,width=15,borderwidth=0)
+        get_vc.place(x=120,y=140)
+        get_apikey=Entry(top,width=20,show="*",borderwidth=0)
+        get_apikey.place(x=120,y=180)
+
+        submit_btn1 = Button(top, 
+                    text='Submit',
+                    font=btn_fonts,
+                    fg=btn_fg,
+                    bg=btn_bg,
+                    bd=0,
+                    activeforeground="Green",
+                    command=write_test
+                    )
+        submit_btn1.place(x=130, 
+                 y=220)
+
+    else:
+
+        try:
+            #ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
+            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=config.get("CRED","factor2"),vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
+            usersession=ret['susertoken']
+            username = ret['uname']
+            username = "Welcome" + " " + username + "!"
+            Welcome_lbl2 = Label(root, text=username, fg=lbl_fg,font=lbl_fonts, bg="Green")
+            Welcome_lbl2.place(x=130, y=20)
+            log(f'Sucessfully Login to the account {username}')
+        except Exception as e:
+            errorlog(f'an exception occurred :: {e}')
 
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
-
-    global bn_nifty_lp
-    global nifty_lp
-    #global sh
-    # bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
-    # nifty_lp=api.get_quotes('NSE', 'Nifty 50')
-    # bn_nifty_lp=float(bn_nifty_lp['lp'])
-    # nifty_lp=float(nifty_lp['lp'])
     pos_data=api.get_positions()
     if pos_data == None:
         log(f'No Positions Data available for today')
@@ -131,9 +194,9 @@ def startThread(thread): # Start the Thread (Thread Manager)
         case 6:
             t1=threading.Thread(target=pos,daemon='true')
             t1.start()
-        case 7:
-            t1=threading.Thread(target=my_update)
-            t1.start()
+        # case 7:
+        #     t1=threading.Thread(target=my_update)
+        #     t1.start()
 #testing the stopthread
 def stopThread():
     global stopPos
@@ -356,6 +419,7 @@ def my_index (*args):
         elif qty_value == "5":
             qty=qty_to_lot.get('5')
         
+        log(f'Qty selected is: {qty}')   
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
     
@@ -367,7 +431,6 @@ def my_strike(*args): # Get the token details according to the Comobox selection
     global token_pe
 
     Strike_selection=Strike_combo_box1.get()    
-    print(Strike_selection)
 
     bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
     nifty_lp=api.get_quotes('NSE', 'Nifty 50')
@@ -376,7 +439,6 @@ def my_strike(*args): # Get the token details according to the Comobox selection
 
     try:
         if index_symbol == "NIFTY":
-            print("yes")
             nf_round_number = math.fmod(nifty_lp, 50)
             nf_atm = nifty_lp - nf_round_number
             nf_itm = nf_atm - 50
@@ -403,7 +465,6 @@ def my_strike(*args): # Get the token details according to the Comobox selection
             out_of_the_money2 = 'otm2'
 
         elif index_symbol == "BANKNIFTY":
-            print("no")
             bn_round_number = math.fmod(bn_nifty_lp, 100) # round the strike
             bn_atm = bn_nifty_lp - bn_round_number
             bn_itm = bn_atm - 100
@@ -491,7 +552,7 @@ def loss_stop(*args):
     try:
         sl=float(stoploss.get())
         #qty=qtycalldata.get()
-        log(f'collected the SL: {sl}, QTY:{qty}')
+        log(f'collected the SL: {sl}')
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
@@ -532,7 +593,7 @@ def update_ltp(): # Update the strike price in tkinter window
 root=Tk()
 root.geometry("650x350")
 root.config(background="#ffffe6")
-root.title('Richdotcom Scalper App')
+root.title('Richdotin Scalper App')
 style= ttk.Style()
 style.theme_use('clam')
 #style.theme_use('winnative') ## enable this for windows
@@ -557,15 +618,19 @@ Login_btn1 = Button(root,
                     font=btn_fonts,
                     fg=btn_fg,
                     bg=btn_bg,
+                    bd=0,
+                    activeforeground="Green",
                     command=lambda:startThread(0))
 Login_btn1.place(x=40, 
                  y=10)
 #Orders Button
 tb_btn1 = Button(root,
-                 text='Orders',
+                 text='Logs',
                  font=btn_fonts,
                  fg=btn_fg,
                  bg=btn_bg,
+                 bd=0,
+                 activeforeground="Green",
                  command=lambda:startThread(1))
 tb_btn1.place(x=570, 
               y=10)
@@ -575,6 +640,8 @@ CE_BUY_Btn1 = Button(root,
                      font=btn_fonts,
                      fg=btn_fg,
                      bg=btn_bg,
+                     bd=0,
+                     activeforeground="Green",
                      command=lambda:startThread(2))
 CE_BUY_Btn1.place(x=500, 
                   y=150)
@@ -584,6 +651,8 @@ Refresh_btn1 = Button(root,
                       font=btn_fonts,
                       fg=btn_fg,
                       bg=btn_bg,
+                      bd=0,
+                      activeforeground="Green",
                       command=lambda:startThread(3))
 Refresh_btn1.place(x=490,
                    y=10)
@@ -593,6 +662,8 @@ PE_BUY_Btn1 = Button(root,
                      font=btn_fonts,
                      fg=btn_fg,
                      bg=btn_bg,
+                     bd=0,
+                     activeforeground="Green",
                      command=lambda:startThread(4))
 PE_BUY_Btn1.place(x=560,
                   y=150)
@@ -602,6 +673,8 @@ squreoff_Btn1 = Button(root,
                        font=btn_fonts,
                        fg=btn_fg,
                        bg=btn_bg,
+                       bd=0,
+                       activeforeground="Green",
                        command=lambda:startThread(5))
 squreoff_Btn1.place(x=130,
                     y=200)
@@ -611,6 +684,8 @@ Positions_btn = Button(root,
                        font=btn_fonts,
                        bg=btn_bg,
                        fg=btn_fg,
+                       bd=0,
+                       activeforeground="Green",
                        command=lambda:startThread(6))
 Positions_btn.place(x=40,
                     y=200)
@@ -712,7 +787,7 @@ PUT_lbl1 = Label(root,
                  text='PUT',
                  bg=lbl_bg,
                  font=lbl_fonts)
-PUT_lbl1.place(x=560,
+PUT_lbl1.place(x=565,
                y=60)
 
 # Strike Price Label
@@ -742,24 +817,28 @@ QTY_lbl1.place(x=400,
 stoploss=IntVar()
 loss=Entry(root,
            width=5,
-           textvariable=stoploss)
+           textvariable=stoploss,
+           borderwidth=0)
 loss.place(x=320,
            y=80)
 stoploss.trace("w", loss_stop)
 
 ### Order Stat
 ord_stat_entry=Entry(root,
-                     width=10)
+                     width=10,
+                     borderwidth=0)
 ord_stat_entry.place(x=130,
                      y=310)
 ## CALL Entry box 
 call_strike=Entry(root,
-                  width=5)
+                  width=5,
+                  borderwidth=0)
 call_strike.place(x=500,
                   y=90)
 ## PUT Entry box
 put_strike=Entry(root,
-                 width=5)
+                 width=5,
+                 borderwidth=0)
 put_strike.place(x=560,
                  y=90)
 
@@ -773,8 +852,10 @@ index_combo1box.current(0)
 index_combo1.trace('w', my_index)
 
 #Combobox 1
+
+expiry_date=config.get("expiry","values") # The details expiry details need to be updated in ini file.
 Expiry_day_combo=tk.StringVar() # string variable 
-Expiry_day_combo_box1 =ttk.Combobox(root, values=["Select Expiry","30 JUN22","7 JUL22","14 JUL22","21 JUL22",],width=11,textvariable=Expiry_day_combo)
+Expiry_day_combo_box1 =ttk.Combobox(root, values=expiry_date,width=11,textvariable=Expiry_day_combo)
 Expiry_day_combo_box1.place(x=120, y=60)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
