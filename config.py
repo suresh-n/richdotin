@@ -1,6 +1,0 @@
-user    = 'xxxxx'
-pwd     = 'xxxxx'
-factor2 = 'xxxxx'
-vc      = 'xxxxxx'
-app_key = 'xxxxxxxxxxxx'
-imei    = 'xxxxxxxx'
