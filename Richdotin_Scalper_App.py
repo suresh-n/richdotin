@@ -2,8 +2,7 @@ from time import sleep
 from tkinter import *
 import tkinter as tk
 from tkinter import ttk
-import threading,json,math,sqlite3,logging,config
-from numpy import empty
+import threading,json,math,sqlite3,logging
 from datetime import datetime, timedelta
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -68,7 +67,7 @@ def write_test():
         config.set("CRED", "factor2",get_factor2_1)
         config.set("CRED", "vc",get_vc_1)
         config.set("CRED", "app_key",get_apikey_1)
-        with open('test.ini', 'w') as configfile:
+        with open('config.ini', 'w') as configfile:
             config.write(configfile)
             log(f'The test.ini file filled with the Credential details')
         top.destroy()
@@ -597,7 +596,7 @@ root.title('Richdotin Scalper App')
 style= ttk.Style()
 style.theme_use('clam')
 #style.theme_use('winnative') ## enable this for windows
-root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotcom.png'))
+root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotin.png'))
 #root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
 
 def time():
