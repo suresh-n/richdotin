@@ -2,26 +2,24 @@ from time import sleep
 from tkinter import *
 import tkinter as tk
 from tkinter import ttk
-import threading,json,math,sqlite3,logging
+import threading,json,math,sqlite3,logging,os,csv,time
 from datetime import datetime, timedelta
 from datetime import datetime as dt
 from datetime import timedelta as td
 from time import strftime
 from api_helper import ShoonyaApiPy
 import pandas as pd
-import time
-#from threading import Timer
+from tkinter import simpledialog,filedialog,messagebox
 
 import configparser
 from pathlib import Path
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-
 start = datetime.now()
 print(start)
 
-logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"App.log"
+logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"Scalper_App.log"
 print(logfile)
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                     level=logging.INFO, 
@@ -129,7 +127,7 @@ def Login(): #Login function get the api login + username and cash margin
             Welcome_lbl2.place(x=130, y=20)
             log(f'Sucessfully Login to the account {username}')
         except Exception as e:
-            errorlog(f'an exception occurred :: {e}')
+            errorlog(f'an exception occurred :: {e} API ERROR')
 
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
     pos_data=api.get_positions()
@@ -234,14 +232,13 @@ order_no=[]
 
 def placeCallOrder():  # Place the Call option order 
     global order_no
-    global stoploss_limit_ce
-    global stoploss_limit_trigger_ce
+    global price_ltp
+    
     try:
         # global target_limit
         price_ltp = api.get_quotes(exchange='NFO', token=token_ce)
         price_ltp=price_ltp['bp1']
-        stoploss_limit_ce=float(price_ltp)-float(sl)
-        stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
+        
         # # Place call order
         order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_ce, 
@@ -249,12 +246,28 @@ def placeCallOrder():  # Place the Call option order
                         retention='DAY', remarks='my_order_001')
         order_no=order_no['norenordno']
         log(f'[OrderPlaced] Placed call { tsym_ce } order at {price_ltp} x Quantity  {qty} and order number is {order_no}')
-        place_sl_order_call()
+        check_order_stat()
+        if order_status=='OPEN':
+            cancel_ord = api.cancel_order(orderno=order_no)
+            check_order_stat()
+        else:
+            pass
+        if check_SL == 1:
+            place_sl_order_call()
+        else:
+            pass
+        
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
 def place_sl_order_call():
     global sl_order_number
+    global stoploss_limit_ce
+    global stoploss_limit_trigger_ce
+
+    stoploss_limit_ce=float(price_ltp)-float(sl)
+    stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
+
     check_order_stat()
     try:
         if order_status=='COMPLETE':
@@ -276,26 +289,37 @@ def place_sl_order_call():
 
 def placePutOrder():   # Place the Put option order
     global order_no
-    global stoploss_limit_pe
-    global stoploss_limit_trigger_pe
+    global price_ltp
     try:
 
         price_ltp = api.get_quotes(exchange='NFO', token=token_pe)
         price_ltp=price_ltp['bp1']
-        stoploss_limit_pe=float(price_ltp)-float(sl)
-        stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
+        
         order_no=api.place_order(buy_or_sell='B', product_type='I',
                         exchange='NFO', tradingsymbol=tsym_pe, 
                         quantity=qty, discloseqty=0,price_type='LMT', price=price_ltp, trigger_price=None,
                         retention='DAY', remarks='my_order_001')
         order_no=order_no['norenordno']
         log(f'[OrderPlaced] Placed Put { tsym_pe } order at {price_ltp} x Quantity  {qty} and order number is {order_no}')
-        place_sl_order_put()
+        check_order_stat()
+        if order_status=='OPEN':
+            cancel_ord = api.cancel_order(orderno=order_no)
+            check_order_stat()
+        else:
+            pass
+        if check_SL == 1:
+            place_sl_order_call()
+        else:
+            pass
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
 def place_sl_order_put():
     global sl_order_number
+    global stoploss_limit_pe
+    global stoploss_limit_trigger_pe
+    stoploss_limit_pe=float(price_ltp)-float(sl)
+    stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
     check_order_stat()
     try:
         if order_status=='COMPLETE':
@@ -334,10 +358,50 @@ def squreoff(): # squreoff all the open order manually
                 api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=row["tsym"], quantity=int(row["netqty"]),discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
+
 stopPos=False
+
+def do_popmenu(event):
+    try:
+        right_menu.tk_popup(event.x_root,event.y_root)
+    finally:
+        right_menu.grab_release
+def manual_exit():
+    cancel_sl_order()
+    try:
+        api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=symbol, quantity=netqty,discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
+        log(f'The open position exited,{symbol} {netqty} at market price')
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
+def popup_sl():
+    global sl_manual, sl_trigger
+    try:
+        manual_sl=simpledialog.askinteger(title="Add SL",prompt="SL")
+        avg_round=round(float(Avg))
+        sl_manual=float(avg_round)-float(manual_sl)
+        sl_trigger=float(sl_manual) + float(1.0)
+        log(f'manual SL is:{sl_manual}')
+        place_manual_SL()
+
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
+def place_manual_SL():
+    global sl_order_number
+    try:
+        sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=symbol, quantity=netqty, discloseqty=0,
+                                        price_type='SL-LMT', price=sl_manual, trigger_price=sl_trigger,retention='DAY', remarks='my_order_001')
+        sl_order_number=sl_order_number['norenordno']
+        log(f'Placed manual SL order: the order number is {sl_order_number}')
+    
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+    
+
 def pos(): # Display the Position Details
-    global profitLabel
-    global netqty
+    global profitLabel,Avg,netqty,symbol
+    global right_menu
     try:
         netqty =0 
         while True:
@@ -364,11 +428,20 @@ def pos(): # Display the Position Details
                 pos_netqty.place(x=405,y=280)
                 profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
                 profitLabel.place(x=493, y=280)
+
+                right_menu=Menu(root, tearoff=0)
+                right_menu.config(background="black",fg="white",activeforeground="Green")
+                right_menu.add_command(label="Stop Loss", command=lambda:popup_sl())
+                right_menu.add_command(label="Exit",command=lambda:manual_exit())
+
+                pos_symbol.bind("<Button-3>", do_popmenu)
+
                 if pnlpos > 0:
                     profitLabel.config(bg="Green")
                 else:
                     profitLabel.config(bg="Red")
             elif netqty == 0:
+                pos_symbol.place_forget()
                 log(f'No Open Position since the loop brokened')
                 global stopPos
                 if(stopPos==True):
@@ -379,6 +452,9 @@ def pos(): # Display the Position Details
         errorlog(f'an exception occurred :: {e}')
 #orderData funtion to collect sl,tager,qty data
 
+def pending_orders(): # to showcase the SL open SL order from when one can trail the SL 
+    
+    print("dummy")
 bn_nifty_lp=[]
 
 def my_expiry_update(*args): # Get the expiry date from Combobox
@@ -556,20 +632,67 @@ def loss_stop(*args):
         errorlog(f'an exception occurred :: {e}')
 
 
-#def orderData(*args): # Get the orderData like SL,Target,QTY
-    #global target
+def export_log_to_excel():
+    if len(tv.get_children()) < 1:
+        messagebox.showinfo("No Data","No Data Available to export")
+        return False
+    file = filedialog.asksaveasfilename(initialdir=os.getcwd(),title="Save CSV",filetypes=(("CSV File", "*.csv"),("All Files","*.*")))
+    with open(file,mode='w', newline='') as myfile:
+        exp_writer = csv.writer(myfile,delimiter='\t')
+        for i in tv.get_children():
+            row= tv.item(i)['values']
+            exp_writer.writerow(row)
+    messagebox.showinfo("Message"," Export Successful")
+    log(f'exporeted the csv file')
 
-def trade_book(): # Display the Help child window
-   
+    # with open('countries.csv', 'w', encoding='UTF8', newline='') as f:
+    #     writer = csv.writer(f)
+    #     writer.writerows(tvdata)
+
+def trade_book(): # Display the Help child window   
+    global tv
     try:
         top= Toplevel(root)
-        top.geometry("750x250")
+        #top.geometry("700x300")
         top.title("Trade book")
-
-        #Label(root, text='Work in Progress',font=("Helvatical bold",15))
+        top.config(background="#ffffe6")
         trade_b = api.get_trade_book()
-        trade_b=pd.DataFrame(trade_b)
-        
+        trade_b = pd.DataFrame(trade_b)
+        tv= ttk.Treeview(top)
+        tv['columns'] = ("Instrument","Type","Time","Qty","Price","OrderNo")
+        tv.column("#0",width=40,minwidth=25,anchor= CENTER)
+        tv.column("Instrument",width=120,minwidth=25,anchor= CENTER)
+        tv.column("Type",width=50,minwidth=25,anchor= CENTER)
+        tv.column("Time",width=150,minwidth=25,anchor= CENTER)
+        tv.column("Qty",width=50,minwidth=25,anchor= CENTER)
+        tv.column("Price",width=100,minwidth=25,anchor= CENTER)
+        tv.column("OrderNo",width=120,minwidth=25,anchor= CENTER)
+        tv.heading("#0",text="ID",anchor=W) 
+        tv.heading("Instrument", text="Instrument")
+        tv.heading("Type",text="Type")
+        tv.heading("Time",text="Time")
+        tv.heading("Qty",text="Qty")
+        tv.heading("Price",text="Price")
+        tv.heading("OrderNo",text="OrderNo")
+        i =0 
+        row=0
+        for row in trade_b.to_dict("records"):
+            tv.insert("",i,'end',values=(row['tsym'],row['trantype'],row['norentm'],row['qty'],row['flprc'],row['norenordno']))
+            i = i + 1
+            # tvdata=row['tsym'],row['trantype'],row['norentm'],row['qty'],row['flprc'],row['norenordno']
+            # print(tvdata)
+        tv.pack(pady=30)
+        export_to_csv=Button(top,
+                             text="Export CSV",
+                             font=btn_fonts,
+                             fg=btn_fg,
+                             bg=btn_bg,
+                             bd=0,
+                             activeforeground="Green",
+                             command=lambda:export_log_to_excel()
+                             )
+        export_to_csv.pack()
+       
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
@@ -594,10 +717,14 @@ root.geometry("650x350")
 root.config(background="#ffffe6")
 root.title('Richdotin Scalper App')
 style= ttk.Style()
-style.theme_use('clam')
+
+style.theme_use('default')
 #style.theme_use('winnative') ## enable this for windows
 root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotin.png'))
 #root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
+
+
+
 
 def time():
     string = strftime('%H:%M:%S %p')
@@ -761,12 +888,12 @@ m2m_lbl1 = Label(root,
 m2m_lbl1.place(x=230,
                y=210)
 #SL Label 
-sl_text = Label(root,
-                text='SL:',
-                bg=lbl_bg,
-                font=lbl_fonts)
-sl_text.place(x=250,
-              y=80)
+# sl_text = Label(root,
+#                 text='SL:',
+#                 bg=lbl_bg,
+#                 font=lbl_fonts)
+# sl_text.place(x=250,
+#               y=80)
 #Order Stat Label
 ord_stat = Label(root,
                  text='Order Stat:',
@@ -812,15 +939,29 @@ QTY_lbl1.place(x=400,
                y=150)
 
 ### Entry box
-### SL Entry
-stoploss=IntVar()
-loss=Entry(root,
-           width=5,
-           textvariable=stoploss,
-           borderwidth=0)
-loss.place(x=320,
-           y=80)
-stoploss.trace("w", loss_stop)
+def radio_clicked(value):
+    global check_SL
+    global stoploss
+    check_SL=value
+    if check_SL == 1:
+        ### SL Entry
+        stoploss=IntVar()
+        loss=Entry(root,
+                width=5,
+                textvariable=stoploss,
+                borderwidth=0)
+        loss.place(x=300,
+                   y=80)
+        stoploss.trace("w", loss_stop)
+    else:
+        pass
+
+sl_radio=IntVar()   
+radio_sl=Radiobutton(root,text="SL", variable=sl_radio,value=1,command=lambda:radio_clicked(sl_radio.get()),background="#ffffe6",bd=0)
+radio_sl.place(x=250, y=80)
+
+
+
 
 ### Order Stat
 ord_stat_entry=Entry(root,
