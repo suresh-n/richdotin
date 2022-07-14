@@ -2,7 +2,7 @@ from time import sleep
 from tkinter import *
 import tkinter as tk
 from tkinter import ttk
-import threading,json,math,sqlite3,logging,os,csv,time
+import threading,json,math,sqlite3,logging,os,csv,time,ws
 from datetime import datetime, timedelta
 from datetime import datetime as dt
 from datetime import timedelta as td
@@ -43,17 +43,25 @@ api = ShoonyaApiPy()
 
 lbl_fonts=("Helvatical bold",10)
 btn_fonts=("Helvatical bold",10)
-btn_fg="white"
-btn_bg="black"
+btn_fg="White"
+btn_bg="Black"
 lbl_fg='white'
 lbl_bg='#ffffe6'
-m2m_fonts=("Helvatical bold",11)
+m2m_fonts=("Helvatical bold",10)
 time_font=('Helvatical bold', 10, 'bold')
-time_bg='green'
-time_fg='white'
-top_lbl_fg="black"
-top_lbl_bg='#ffffe6'
-top_lbl_font=("Helvatical bold",11)
+time_bg='Green'
+time_fg='White'
+top_lbl_fg="Black"
+top_lbl_bg='Grey'
+top_lbl_font=("Helvatical bold",10)
+welcome_font =("Helvatical bold",10)
+welcome_bg='White'
+welcome_fg='Green'
+refresh_font=("Helvatical bold",10)
+refresh_bg='White'
+refresh_fg='Green'
+
+
 def write_test():
         get_user=get_username.get()
         get_password=get_pwd.get()
@@ -79,9 +87,9 @@ def Login(): #Login function get the api login + username and cash margin
         log("CRED Variable is empty so getting variable")
 
         top= Toplevel(root)
-        top.geometry("300x280")
+        top.geometry("300x270")
         top.title("Richdotin Scalping App")
-        top.config(background="#ffffe6")
+        top.config(background="Grey")
         lbl_username=Label(top,text="User:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
         lbl_username.place(x=30,y=20)
         lbl_password=Label(top,text="Password:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
@@ -123,8 +131,9 @@ def Login(): #Login function get the api login + username and cash margin
             usersession=ret['susertoken']
             username = ret['uname']
             username = "Welcome" + " " + username + "!"
-            Welcome_lbl2 = Label(root, text=username, fg=lbl_fg,font=lbl_fonts, bg="Green")
-            Welcome_lbl2.place(x=130, y=20)
+            #Welcome_lbl2 = Label(root, text=username, fg=lbl_fg,font=lbl_fonts, bg="Green")
+            Welcome_lbl2 = Label(root, text=username, fg="Green",font=lbl_fonts, bg="White")
+            Welcome_lbl2.place(x=90, y=10)
             log(f'Sucessfully Login to the account {username}')
         except Exception as e:
             errorlog(f'an exception occurred :: {e} API ERROR')
@@ -141,8 +150,15 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
             pnl += float(i['rpnl'])
             day_m2m = mtm + pnl
             day_m2m_total = "{:.2f}".format(day_m2m)
-            m2m = Label(root, text=day_m2m_total,bg=lbl_fg,font=lbl_fonts,width=10)
-            m2m.place(x=280, y=210)
+            m2m = Label(root, text=day_m2m_total,bg=refresh_bg,font=refresh_font,width=10,relief="solid")
+            m2m.place(x=300, y=90)
+            #Profit m2m
+            m2m_lbl1 = Label(root,
+                            text='m2m:',
+                            bg=lbl_bg,
+                            font=m2m_fonts)
+            m2m_lbl1.place(x=200,
+                           y=90)
 
             if day_m2m > 0:
                 m2m.config(fg="Green")
@@ -158,15 +174,15 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
     margin_available = round(((float((limit['cash']))) - marginused),2)
     margin_available_1lot=margin_available/25
     print("With the avialble fund you can get one lot of BN with price:",margin_available_1lot)
-
-    Label(root, text=margin_available,bg="green",fg="white").grid(row=1, padx=415, pady=20)
+    Margin_Avbl_lbl2=Label(root, text=margin_available,bg=refresh_bg,font=refresh_font,width=10,fg=refresh_fg,relief="solid")
+    Margin_Avbl_lbl2.place(x=300,y=60)
     # Margin Avbl Label
     Margin_Avbl_lbl1 = Label(root, text='Avbl_Margin:',font=lbl_fonts,bg=lbl_bg)
-    Margin_Avbl_lbl1.place(x=320, y=20)
+    Margin_Avbl_lbl1.place(x=200, y=60)
     log(f'BN last price updated  {bn_nifty_lp}')
     log(f'The fund balance updated {margin_available}')
-    #sh=Timer(30,Refresh_clicked)
-    #sh.start()
+    show_SL_order()
+    
    
 def startThread(thread): # Start the Thread (Thread Manager)
     match thread:
@@ -355,7 +371,7 @@ def squreoff(): # squreoff all the open order manually
         for row in squreoff_Pos.to_dict("records"):
             if int(row["netqty"])>0:
                 print(row["tsym"])
-                api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=row["tsym"], quantity=int(row["netqty"]),discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
+                api.place_order(buy_or_sell='S', product_type='I', exchange=exch, tradingsymbol=row["tsym"], quantity=int(row["netqty"]),discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
@@ -367,13 +383,22 @@ def do_popmenu(event):
     finally:
         right_menu.grab_release
 def manual_exit():
-    cancel_sl_order()
     try:
-        api.place_order(buy_or_sell='S', product_type='I', exchange='NFO', tradingsymbol=symbol, quantity=netqty,discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
-        log(f'The open position exited,{symbol} {netqty} at market price')
+        cancel_sl_order()
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
-
+    try:
+        api.place_order(buy_or_sell='S', product_type='I', exchange=exch, tradingsymbol=symbol, quantity=netqty,discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
+        log(f'The open position exited,{symbol} {netqty} at market price')
+        
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+    
+def do_popmenu1(event):
+    try:
+        right_menu1.tk_popup(event.x_root,event.y_root)
+    finally:
+        right_menu1.grab_release
 def popup_sl():
     global sl_manual, sl_trigger
     try:
@@ -387,20 +412,82 @@ def popup_sl():
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
+def show_SL_order():
+    global right_menu1,sl_symbol_lbl1,sl_price_lbl1,sl_qty_lbl1,sl_status_lbl1,sl_order_number
+    try:
+        trail_sl = api.get_order_book()
+        trail_sl=pd.DataFrame(trail_sl)
+        row=0
+        for row in trail_sl.to_dict("records"):
+            if row["status"] == "TRIGGER_PENDING":
+                sl_order_number=row["norenordno"]
+                sl_symbol_lbl1=Label(root,text=row["tsym"],width=25,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                sl_symbol_lbl1.place(x=10,y=310)
+                sl_price_lbl1=Label(root,text=row["prc"],width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                sl_price_lbl1.place(x=220,y=310)
+                sl_qty_lbl1=Label(root,text=row["qty"],width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                sl_qty_lbl1.place(x=310,y=310)
+                sl_status_lbl1=Label(root,text=row["status"],width=15,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                sl_status_lbl1.place(x=400,y=310) 
+
+                right_menu1=Menu(root, tearoff=0)
+                right_menu1.config(background="black",fg="white",activeforeground="Green")
+                right_menu1.add_command(label="Trail SL", command=lambda:trail_sl_pop())
+                right_menu1.add_command(label="Calcel Order", command=lambda:cancel_sl_order())
+                sl_symbol_lbl1.bind("<Button-3>", do_popmenu1)
+                         
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
 def place_manual_SL():
     global sl_order_number
     try:
-        sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=symbol, quantity=netqty, discloseqty=0,
+        sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange=exch, tradingsymbol=symbol, quantity=netqty, discloseqty=0,
                                         price_type='SL-LMT', price=sl_manual, trigger_price=sl_trigger,retention='DAY', remarks='my_order_001')
         sl_order_number=sl_order_number['norenordno']
-        log(f'Placed manual SL order: the order number is {sl_order_number}')
-    
+        
+        log(f'Placed manual SL order: the order number is {sl_order_number}')    
+        show_SL_order()
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
+
+def trail_sl_pop():
+    global trail_sl_manual, trail_sl_trigger
+    get_live_ltp = api.get_quotes(exchange=exch, token=symbol)
+    get_live_ltp=get_live_ltp['lp']
     
+    try:
+        trail_manual_sl=simpledialog.askinteger(title="Add Trail SL",prompt="SL")
+        avg_round=round(float(get_live_ltp))
+        trail_sl_manual=float(avg_round)-float(trail_manual_sl)
+        trail_sl_trigger=float(trail_sl_manual) + float(2.0)
+        log(f'trail manual SL is:{trail_sl_manual}')
+        modify_sl_order()
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+
+def modify_sl_order():
+
+    try:
+        trail_sl = api.get_order_book()
+        trail_sl=pd.DataFrame(trail_sl)
+        row=0
+        for row in trail_sl.to_dict("records"):
+            if row["status"] == "TRIGGER_PENDING":
+                trail_exch=row["exch"]
+                trail_symbol=row["tsym"]
+                trail_order=row["norenordno"]
+                trail_qty=row["qty"]
+                trail_sl=api.modify_order(exchange=trail_exch, tradingsymbol=trail_symbol, orderno=trail_order,newquantity=trail_qty,
+                             newprice_type='SL-LMT', newprice=trail_sl_manual,newtrigger_price=trail_sl_trigger)
+                log(f'SL Order modified with trail price {trail_symbol} x {trail_qty}x{trail_order}x{trail_sl_manual}x{trail_sl_trigger}')
+                show_SL_order()
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
 
 def pos(): # Display the Position Details
-    global profitLabel,Avg,netqty,symbol
+    global profitLabel,Avg,netqty,symbol,exch
+    global pos_symbol,pos_Avg,pos_ltp,pos_netqty,profitLabel
     global right_menu
     try:
         netqty =0 
@@ -415,19 +502,19 @@ def pos(): # Display the Position Details
                     liveprice=row["lp"]
                     pnlpos=float(row["urmtom"])
                     netqty=float(row["netqty"])
-
+                    exch=row["exch"]
 
             if netqty != 0:
-                pos_symbol=Label(root,text=symbol,width=24,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_symbol.place(x=40,y=280) 
-                pos_Avg=Label(root,text=Avg,width=8,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_Avg.place(x=240,y=280)
+                pos_symbol=Label(root,text=symbol,width=25,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_symbol.place(x=10,y=250) 
+                pos_Avg=Label(root,text=Avg,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
+                pos_Avg.place(x=220,y=250)
                 pos_ltp=Label(root,text=liveprice,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_ltp.place(x=315,y=280)
+                pos_ltp.place(x=310,y=250)
                 pos_netqty=Label(root,text=netqty,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
-                pos_netqty.place(x=405,y=280)
+                pos_netqty.place(x=400,y=250)
                 profitLabel=Label(root, text=pnlpos, width=10,fg="black",font=("Arial Black",10))
-                profitLabel.place(x=493, y=280)
+                profitLabel.place(x=490, y=250)
 
                 right_menu=Menu(root, tearoff=0)
                 right_menu.config(background="black",fg="white",activeforeground="Green")
@@ -441,7 +528,6 @@ def pos(): # Display the Position Details
                 else:
                     profitLabel.config(bg="Red")
             elif netqty == 0:
-                pos_symbol.place_forget()
                 log(f'No Open Position since the loop brokened')
                 global stopPos
                 if(stopPos==True):
@@ -450,11 +536,7 @@ def pos(): # Display the Position Details
                 break
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
-#orderData funtion to collect sl,tager,qty data
 
-def pending_orders(): # to showcase the SL open SL order from when one can trail the SL 
-    
-    print("dummy")
 bn_nifty_lp=[]
 
 def my_expiry_update(*args): # Get the expiry date from Combobox
@@ -631,7 +713,6 @@ def loss_stop(*args):
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
-
 def export_log_to_excel():
     if len(tv.get_children()) < 1:
         messagebox.showinfo("No Data","No Data Available to export")
@@ -645,10 +726,6 @@ def export_log_to_excel():
     messagebox.showinfo("Message"," Export Successful")
     log(f'exporeted the csv file')
 
-    # with open('countries.csv', 'w', encoding='UTF8', newline='') as f:
-    #     writer = csv.writer(f)
-    #     writer.writerows(tvdata)
-
 def trade_book(): # Display the Help child window   
     global tv
     try:
@@ -658,6 +735,7 @@ def trade_book(): # Display the Help child window
         top.config(background="#ffffe6")
         trade_b = api.get_trade_book()
         trade_b = pd.DataFrame(trade_b)
+        
         tv= ttk.Treeview(top)
         tv['columns'] = ("Instrument","Type","Time","Qty","Price","OrderNo")
         tv.column("#0",width=40,minwidth=25,anchor= CENTER)
@@ -677,10 +755,8 @@ def trade_book(): # Display the Help child window
         i =0 
         row=0
         for row in trade_b.to_dict("records"):
-            tv.insert("",i,'end',values=(row['tsym'],row['trantype'],row['norentm'],row['qty'],row['flprc'],row['norenordno']))
-            i = i + 1
-            # tvdata=row['tsym'],row['trantype'],row['norentm'],row['qty'],row['flprc'],row['norenordno']
-            # print(tvdata)
+            tv.insert("",'end',values=(row['tsym'],row['trantype'],row['norentm'],row['qty'],row['flprc'],row['norenordno']))
+
         tv.pack(pady=30)
         export_to_csv=Button(top,
                              text="Export CSV",
@@ -696,24 +772,24 @@ def trade_book(): # Display the Help child window
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
-
 def update_ltp(): # Update the strike price in tkinter window
+    
     try:
-
         call_strike_ltp=api.get_quotes(exchange='NFO', token=token_ce)
         call_strike_ltp=call_strike_ltp['lp']
         display_call_ltp=Label(root,text=call_strike_ltp,width=5,bg='Orange')
-        display_call_ltp.place(x=500,y=120)
+        display_call_ltp.place(x=450,y=110)
         put_strike_ltp=api.get_quotes(exchange='NFO', token=token_pe)
         put_strike_ltp=put_strike_ltp['lp']
         display_put_ltp=Label(root,text=put_strike_ltp,width=5,bg='Orange')
-        display_put_ltp.place(x=560,y=120)
+        display_put_ltp.place(x=510,y=110)
         log(f'call ltp:{tsym_ce}  {call_strike_ltp} and put ltp: {tsym_pe} {put_strike_ltp}')
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
 root=Tk()
-root.geometry("650x350")
+#root.geometry("590x330")
+root.geometry("590x350")
 root.config(background="#ffffe6")
 root.title('Richdotin Scalper App')
 style= ttk.Style()
@@ -734,7 +810,7 @@ def time():
 lbl = Label(root, font = time_font,
             background = time_bg,
             foreground = time_fg)
-lbl.place(x=530,y=310)
+lbl.place(x=350,y=10)
 time()
 
 #### BUTTONS####
@@ -747,7 +823,7 @@ Login_btn1 = Button(root,
                     bd=0,
                     activeforeground="Green",
                     command=lambda:startThread(0))
-Login_btn1.place(x=40, 
+Login_btn1.place(x=10, 
                  y=10)
 #Orders Button
 tb_btn1 = Button(root,
@@ -758,7 +834,7 @@ tb_btn1 = Button(root,
                  bd=0,
                  activeforeground="Green",
                  command=lambda:startThread(1))
-tb_btn1.place(x=570, 
+tb_btn1.place(x=520, 
               y=10)
 # CE BUY button
 CE_BUY_Btn1 = Button(root, 
@@ -769,8 +845,8 @@ CE_BUY_Btn1 = Button(root,
                      bd=0,
                      activeforeground="Green",
                      command=lambda:startThread(2))
-CE_BUY_Btn1.place(x=500, 
-                  y=150)
+CE_BUY_Btn1.place(x=450, 
+                  y=140)
 #Refresh button
 Refresh_btn1 = Button(root,
                       text='Refresh',
@@ -780,7 +856,7 @@ Refresh_btn1 = Button(root,
                       bd=0,
                       activeforeground="Green",
                       command=lambda:startThread(3))
-Refresh_btn1.place(x=490,
+Refresh_btn1.place(x=440,
                    y=10)
 # PE BUY button
 PE_BUY_Btn1 = Button(root,
@@ -791,8 +867,8 @@ PE_BUY_Btn1 = Button(root,
                      bd=0,
                      activeforeground="Green",
                      command=lambda:startThread(4))
-PE_BUY_Btn1.place(x=560,
-                  y=150)
+PE_BUY_Btn1.place(x=510,
+                  y=140)
 #squreoff button 
 squreoff_Btn1 = Button(root,
                        text='SqureOff',
@@ -802,8 +878,8 @@ squreoff_Btn1 = Button(root,
                        bd=0,
                        activeforeground="Green",
                        command=lambda:startThread(5))
-squreoff_Btn1.place(x=130,
-                    y=200)
+squreoff_Btn1.place(x=100,
+                    y=180)
 # Positions button
 Positions_btn = Button(root,
                        text='Positions',
@@ -813,80 +889,110 @@ Positions_btn = Button(root,
                        bd=0,
                        activeforeground="Green",
                        command=lambda:startThread(6))
-Positions_btn.place(x=40,
-                    y=200)
+Positions_btn.place(x=10,
+                    y=180)
 
 ### LABEL 
 
 #POS LABELS
 lab_symbol=Label(root,
                  text='Symbol',
-                 width=24,
+                 width=25,
                  bg="cornsilk3",
                  fg="black",
                  font=("Arial Black",10))
-lab_symbol.place(x=40,
-                 y=250)       
+lab_symbol.place(x=10,
+                 y=220)       
 lab_Avg=Label(root,
               text='Avg',
-              width=8,
+              width=10,
               bg="cornsilk3",
               fg="black",
               font=("Arial Black",10))
-lab_Avg.place(x=240,
-              y=250)
+lab_Avg.place(x=220,
+              y=220)
 lab_ltp=Label(root,
               text='Ltp',
               width=10,
               bg="cornsilk3",
               fg="black",
               font=("Arial Black",10))
-lab_ltp.place(x=313,
-              y=250)
+lab_ltp.place(x=310,
+              y=220)
 lab_qty=Label(root,
               text='Qty',
               width=10,
               bg="cornsilk3",
               fg="black",
               font=("Arial Black",10))
-lab_qty.place(x=403,
-              y=250)
+lab_qty.place(x=400,
+              y=220)
 lab_pnl=Label(root,
               text='Pnl',
               width=10,
               bg="cornsilk3",
               fg="black",
               font=("Arial Black",10))
-lab_pnl.place(x=493,
-              y=250)
+lab_pnl.place(x=490,
+              y=220)
+
+#Sl order Lables
+sl_symbol_lbl2=Label(root,
+                 text='Symbol',
+                 width=25,
+                 bg="cornsilk3",
+                 fg="black",
+                 font=("Arial Black",10))
+sl_symbol_lbl2.place(x=10,
+                 y=280)    
+
+sl_price_Avg_lbl2=Label(root,
+              text='Price',
+              width=10,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+sl_price_Avg_lbl2.place(x=220,
+              y=280) 
+
+sl_price_tprice_lbl2=Label(root,
+              text='Qty',
+              width=10,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+sl_price_tprice_lbl2.place(x=310,
+              y=280) 
+sl_price_qty_lbl2=Label(root,
+              text='Status',
+              width=15,
+              bg="cornsilk3",
+              fg="black",
+              font=("Arial Black",10))
+sl_price_qty_lbl2.place(x=400,
+              y=280) 
+  
 # Symbol Label
 Symbol_lbl1 = Label(root,
                     text='Symbol:',
                     bg=lbl_bg,
                     font=lbl_fonts)
-Symbol_lbl1.place(x=40,
-                  y=110)
+Symbol_lbl1.place(x=10,
+                  y=100)
 # Expiry day Label
 Expiry_date_lbl1 = Label(root,
                          text='Expiry:',
                          bg=lbl_bg,
                          font=lbl_fonts)
-Expiry_date_lbl1.place(x=40,
+Expiry_date_lbl1.place(x=10,
                        y=60)
 # Strike Label
 Strike_lbl1 = Label(root,
                     text='Strike:',
                     bg=lbl_bg,
                     font=lbl_fonts)
-Strike_lbl1.place(x=40,
-                  y=160)
-#Profit m2m
-m2m_lbl1 = Label(root,
-                 text='m2m:',
-                 bg=lbl_bg,
-                 font=m2m_fonts)
-m2m_lbl1.place(x=230,
-               y=210)
+Strike_lbl1.place(x=10,
+                  y=140)
 #SL Label 
 # sl_text = Label(root,
 #                 text='SL:',
@@ -899,22 +1005,22 @@ ord_stat = Label(root,
                  text='Order Stat:',
                  bg=lbl_bg,
                  font=lbl_fonts)
-ord_stat.place(x=40,
-               y=310)
+ord_stat.place(x=390,
+               y=190)
 # CALL Label
 CALL_lbl1 = Label(root,
                   text='CALL',
                   bg=lbl_bg,
                   font=lbl_fonts)
-CALL_lbl1.place(x=500,
-                y=60)
+CALL_lbl1.place(x=455,
+                y=50)
 # PUT Label
 PUT_lbl1 = Label(root,
                  text='PUT',
                  bg=lbl_bg,
                  font=lbl_fonts)
-PUT_lbl1.place(x=565,
-               y=60)
+PUT_lbl1.place(x=515,
+               y=50)
 
 # Strike Price Label
 Strike_price_lbl1 = Label(root,
@@ -922,26 +1028,27 @@ Strike_price_lbl1 = Label(root,
                           bg=lbl_bg,
                           font=lbl_fonts)
 Strike_price_lbl1.place(x=400,
-                        y=90)
+                        y=80)
 # Strike Label
 price_lable = Label(root, 
                     text='Price:',
                     bg=lbl_bg,
                     font=lbl_fonts)
 price_lable.place(x=400,
-                  y=120)
+                  y=110)
 # QTY Label
 QTY_lbl1 = Label(root, 
                  text='Lot:',
                  bg=lbl_bg,
                  font=lbl_fonts)
-QTY_lbl1.place(x=400, 
-               y=150)
+QTY_lbl1.place(x=200, 
+               y=160)
 
 ### Entry box
 def radio_clicked(value):
     global check_SL
     global stoploss
+    global radio_sl,loss
     check_SL=value
     if check_SL == 1:
         ### SL Entry
@@ -950,44 +1057,41 @@ def radio_clicked(value):
                 width=5,
                 textvariable=stoploss,
                 borderwidth=0)
-        loss.place(x=300,
-                   y=80)
+        loss.place(x=260,
+                   y=120)
         stoploss.trace("w", loss_stop)
-    else:
         pass
 
 sl_radio=IntVar()   
 radio_sl=Radiobutton(root,text="SL", variable=sl_radio,value=1,command=lambda:radio_clicked(sl_radio.get()),background="#ffffe6",bd=0)
-radio_sl.place(x=250, y=80)
-
-
+radio_sl.place(x=200, y=120)
 
 
 ### Order Stat
 ord_stat_entry=Entry(root,
                      width=10,
                      borderwidth=0)
-ord_stat_entry.place(x=130,
-                     y=310)
+ord_stat_entry.place(x=480,
+                     y=190)
 ## CALL Entry box 
 call_strike=Entry(root,
                   width=5,
                   borderwidth=0)
-call_strike.place(x=500,
-                  y=90)
+call_strike.place(x=450,
+                  y=80)
 ## PUT Entry box
 put_strike=Entry(root,
                  width=5,
                  borderwidth=0)
-put_strike.place(x=560,
-                 y=90)
+put_strike.place(x=510,
+                 y=80)
 
 ### Combobox
 # Combobox 0
 index_values1=["Select Index","NIFTY","BANKNIFTY"]
 index_combo1=tk.StringVar()
 index_combo1box=ttk.Combobox(root, values=index_values1,width=11,textvariable=index_combo1)
-index_combo1box.place(x=120,y=110)
+index_combo1box.place(x=70,y=100)
 index_combo1box.current(0)
 index_combo1.trace('w', my_index)
 
@@ -996,21 +1100,21 @@ index_combo1.trace('w', my_index)
 expiry_date=config.get("expiry","values") # The details expiry details need to be updated in ini file.
 Expiry_day_combo=tk.StringVar() # string variable 
 Expiry_day_combo_box1 =ttk.Combobox(root, values=expiry_date,width=11,textvariable=Expiry_day_combo)
-Expiry_day_combo_box1.place(x=120, y=60)
+Expiry_day_combo_box1.place(x=70, y=60)
 Expiry_day_combo_box1.current(0)
 Expiry_day_combo.trace('w',my_expiry_update)
 # Combobox 2
-BN_Combo_values=["ITM2","ITM1","ITM","ATM","OTM","OTM1","OTM2"]
+BN_Combo_values=["Select Strike","ITM2","ITM1","ITM","ATM","OTM","OTM1","OTM2"]
 Strike_combo=tk.StringVar()
 Strike_combo_box1 = ttk.Combobox(root, values=BN_Combo_values,width=11,textvariable=Strike_combo)
-Strike_combo_box1.place(x=120, y=160)
-Strike_combo_box1.current(3)
+Strike_combo_box1.place(x=70, y=140)
+Strike_combo_box1.current(0)
 Strike_combo.trace('w',my_strike)
 # Combobox 3
 qty_combo_value=["1","2","3","4","5"]
 qty_combo=tk.StringVar()
 qty_combo_box1 = ttk.Combobox(root, values=qty_combo_value,width=3,textvariable=qty_combo)
-qty_combo_box1.place(x=440, y=150)
+qty_combo_box1.place(x=260, y=160)
 qty_combo_box1.current(0)
 qty_combo.trace('w',my_index)
 
