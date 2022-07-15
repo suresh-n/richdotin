@@ -354,10 +354,18 @@ def place_sl_order_put():
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
+def destroy_sl_show():
+    sl_symbol_lbl1.destroy()
+    sl_price_lbl1.destroy()
+    sl_qty_lbl1.destroy()
+    sl_status_lbl1.destroy()
+
 def cancel_sl_order():
     try:
         cancel_sl_order=api.cancel_order(orderno=sl_order_number)
         log(f'cancelled SL order {sl_order_number}, before squre off the position')
+        destroy_sl_show()
+        
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
@@ -385,6 +393,7 @@ def do_popmenu(event):
 def manual_exit():
     try:
         cancel_sl_order()
+        destroy_sl_show()
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
     try:
@@ -435,7 +444,7 @@ def show_SL_order():
                 right_menu1.add_command(label="Trail SL", command=lambda:trail_sl_pop())
                 right_menu1.add_command(label="Calcel Order", command=lambda:cancel_sl_order())
                 sl_symbol_lbl1.bind("<Button-3>", do_popmenu1)
-                         
+                
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
@@ -485,6 +494,13 @@ def modify_sl_order():
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
+def destroy_pos_lbl():
+    pos_symbol.destroy()
+    pos_Avg.destroy()
+    pos_ltp.destroy()
+    pos_netqty.destroy()
+    profitLabel.destroy()
+
 def pos(): # Display the Position Details
     global profitLabel,Avg,netqty,symbol,exch
     global pos_symbol,pos_Avg,pos_ltp,pos_netqty,profitLabel
@@ -528,6 +544,7 @@ def pos(): # Display the Position Details
                 else:
                     profitLabel.config(bg="Red")
             elif netqty == 0:
+                pos_symbol.destroy()
                 log(f'No Open Position since the loop brokened')
                 global stopPos
                 if(stopPos==True):
@@ -1036,13 +1053,13 @@ price_lable = Label(root,
                     font=lbl_fonts)
 price_lable.place(x=400,
                   y=110)
-# QTY Label
-QTY_lbl1 = Label(root, 
-                 text='Lot:',
-                 bg=lbl_bg,
-                 font=lbl_fonts)
-QTY_lbl1.place(x=200, 
-               y=160)
+# # QTY Label
+# QTY_lbl1 = Label(root, 
+#                  text='Lot:',
+#                  bg=lbl_bg,
+#                  font=lbl_fonts)
+# QTY_lbl1.place(x=360, 
+#                y=140)
 
 ### Entry box
 def radio_clicked(value):
@@ -1111,10 +1128,10 @@ Strike_combo_box1.place(x=70, y=140)
 Strike_combo_box1.current(0)
 Strike_combo.trace('w',my_strike)
 # Combobox 3
-qty_combo_value=["1","2","3","4","5"]
+qty_combo_value=["Lot","1","2","3","4","5"]
 qty_combo=tk.StringVar()
 qty_combo_box1 = ttk.Combobox(root, values=qty_combo_value,width=3,textvariable=qty_combo)
-qty_combo_box1.place(x=260, y=160)
+qty_combo_box1.place(x=400, y=140)
 qty_combo_box1.current(0)
 qty_combo.trace('w',my_index)
 
