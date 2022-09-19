@@ -19,7 +19,7 @@ config.read('config.ini')
 start = datetime.now()
 print(start)
 
-logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"Scalper_App.log"
+logfile = dt.now().strftime("%d-%m-%Y_%H%M%S")+"_Scalper_App.log"
 print(logfile)
 logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                     level=logging.INFO, 
@@ -172,8 +172,14 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
         marginused = 0
     
     margin_available = round(((float((limit['cash']))) - marginused),2)
-    margin_available_1lot=margin_available/25
-    print("With the avialble fund you can get one lot of BN with price:",margin_available_1lot)
+    margin_available_1lotbn=margin_available/25
+    margin_available_1lotnf=margin_available/50
+
+
+
+    print("With the avialble fund you can get one lot of BN with price:",margin_available_1lotbn)
+    print("With the avialble fund you can get one lot of NF with price:",margin_available_1lotnf)
+
     Margin_Avbl_lbl2=Label(root, text=margin_available,bg=refresh_bg,font=refresh_font,width=10,fg=refresh_fg,relief="solid")
     Margin_Avbl_lbl2.place(x=300,y=60)
     # Margin Avbl Label
@@ -181,9 +187,16 @@ def Refresh_clicked(): # Function get the BN last price so the code can calculat
     Margin_Avbl_lbl1.place(x=200, y=60)
     log(f'BN last price updated  {bn_nifty_lp}')
     log(f'The fund balance updated {margin_available}')
-    show_SL_order()
+    try:
+        show_SL_order()
+        log(f'checked if there is any SL order')
+    except Exception as e:
+        errorlog(f'an exception occurred :: {e}')
+    root.update()
     
-   
+stopPos=False
+stopStrat=False
+
 def startThread(thread): # Start the Thread (Thread Manager)
     match thread:
         case 0:
@@ -211,16 +224,16 @@ def startThread(thread): # Start the Thread (Thread Manager)
         #     t1=threading.Thread(target=my_update)
         #     t1.start()
 #testing the stopthread
-def stopThread():
-    global stopPos
-    stopPos=True
-# def stopThread(thread):  # Stop the Thread (Thread Manager)
-#     global stopPos,stopStrat
-#     match thread:
-#         case 0:
-#             stopPos=True
-#         case 1:
-#             stopStrat=True
+# def stopThread():
+#     global stopPos
+#     stopPos=True
+def stopThread(thread):  # Stop the Thread (Thread Manager)
+    global stopPos,stopStrat
+    match thread:
+        case 0:
+            stopPos=True
+        case 1:
+            stopStrat=True
 
 def check_order_stat(): # Check the order details to place the SL order
     
@@ -399,6 +412,8 @@ def manual_exit():
     try:
         api.place_order(buy_or_sell='S', product_type='I', exchange=exch, tradingsymbol=symbol, quantity=netqty,discloseqty=0,price_type='MKT',price=0,trigger_price=None, retention='DAY',remarks='my_order_001')
         log(f'The open position exited,{symbol} {netqty} at market price')
+        #destroy_pos_lbl()
+        pos()
         
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
@@ -444,6 +459,7 @@ def show_SL_order():
                 right_menu1.add_command(label="Trail SL", command=lambda:trail_sl_pop())
                 right_menu1.add_command(label="Calcel Order", command=lambda:cancel_sl_order())
                 sl_symbol_lbl1.bind("<Button-3>", do_popmenu1)
+            
                 
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
@@ -501,7 +517,8 @@ def destroy_pos_lbl():
     pos_netqty.destroy()
     profitLabel.destroy()
 
-def pos(): # Display the Position Details
+
+def pos():
     global profitLabel,Avg,netqty,symbol,exch
     global pos_symbol,pos_Avg,pos_ltp,pos_netqty,profitLabel
     global right_menu
@@ -511,6 +528,7 @@ def pos(): # Display the Position Details
             orders=api.get_positions()
             orders=pd.DataFrame(orders)
             row=0
+            
             for row in orders.to_dict("records"):
                 if int(row["netqty"])>0:
                     symbol=row["tsym"]
@@ -519,7 +537,11 @@ def pos(): # Display the Position Details
                     pnlpos=float(row["urmtom"])
                     netqty=float(row["netqty"])
                     exch=row["exch"]
-
+                # else:
+                #     global stopPos
+                #     if(stopPos==True):
+                #         stopPos=False
+                #         break
             if netqty != 0:
                 pos_symbol=Label(root,text=symbol,width=25,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_symbol.place(x=10,y=250) 
@@ -544,13 +566,13 @@ def pos(): # Display the Position Details
                 else:
                     profitLabel.config(bg="Red")
             elif netqty == 0:
-                pos_symbol.destroy()
                 log(f'No Open Position since the loop brokened')
                 global stopPos
                 if(stopPos==True):
                     stopPos=False
                     break
                 break
+                
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
