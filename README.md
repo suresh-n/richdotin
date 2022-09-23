@@ -79,6 +79,27 @@ $python Richdotin_Scalper_App.py
 
 * To trail the SL order right click position symbol below the position details bottom and select modify SL to trail the SL. 
 
+##### Quick Scalper Tool
+
+Quick scalper code can be used to place order with target order of just 3 point which is easy to get in index option. We just need to make multiple scalps to achive the day % profit.
+
+##### How to run the tool 
+
+```
+$ wget https://github.com/suresh-n/richdotin/blob/770fc0354229b482ac4dc8aeee6cf8a345b397c3/Quick_Scalper.py
+```
+
+```
+$ python Quick_Scalper.py
+
+```
+
+![](https://i.imgur.com/SU6YZ2C.png)
+
+##### How to use the tool 
+
+* Just select the expiry, symbol, strike and lot then click buy, one the order stat is complete. the traget order with target of 3 points wil be placed. Side by open the broker terminal also so we can see the postion details & open order. 
+* the idea is to collect 3 points quickly by just a click the disadvantage is the SL option is still not implemented so its riskly considering the option movement if we are correct the 3 points can be captured with in a mins. 
 
 ##### Issues to fix
 
