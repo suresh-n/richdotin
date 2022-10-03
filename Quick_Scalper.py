@@ -10,6 +10,9 @@ from time import strftime
 from api_helper import ShoonyaApiPy
 import pandas as pd
 from tkinter import filedialog,messagebox
+import pyotp
+
+factor2 = pyotp.TOTP('xxxxxxxxxxxxx').now()  #copy the authenticator code here in quote.
 
 import configparser
 from pathlib import Path
@@ -127,7 +130,7 @@ def Login(): #Login function get the api login + username and cash margin
 
         try:
             #ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
-            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=config.get("CRED","factor2"),vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
+            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=factor2,vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
             usersession=ret['susertoken']
             username = ret['uname']
             username = "Welcome" + " " + username + "!"
