@@ -10,6 +10,10 @@ from time import strftime
 from api_helper import ShoonyaApiPy
 import pandas as pd
 from tkinter import simpledialog,filedialog,messagebox
+import pyotp
+
+factor2 = pyotp.TOTP('xxxxxxxxxxxxxxxxx').now() #copy the authenticator code here in quote.
+
 
 import configparser
 from pathlib import Path
@@ -127,7 +131,7 @@ def Login(): #Login function get the api login + username and cash margin
 
         try:
             #ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
-            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=config.get("CRED","factor2"),vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
+            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=factor2,vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
             usersession=ret['susertoken']
             username = ret['uname']
             username = "Welcome" + " " + username + "!"
@@ -281,40 +285,40 @@ def placeCallOrder():  # Place the Call option order
             check_order_stat()
         else:
             pass
-        if check_SL == 1:
-            place_sl_order_call()
-        else:
-            pass
+        # if check_SL == 1:
+        #     place_sl_order_call()
+        # else:
+        #     pass
         
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
-def place_sl_order_call():
-    global sl_order_number
-    global stoploss_limit_ce
-    global stoploss_limit_trigger_ce
+# def place_sl_order_call():
+#     global sl_order_number
+#     global stoploss_limit_ce
+#     global stoploss_limit_trigger_ce
 
-    stoploss_limit_ce=float(price_ltp)-float(sl)
-    stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
+#     stoploss_limit_ce=float(price_ltp)-float(sl)
+#     stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
 
-    check_order_stat()
-    try:
-        if order_status=='COMPLETE':
-            print("Placed SELL SL order")
-            sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_ce, quantity=qty, discloseqty=0,
-                                        price_type='SL-LMT', price=stoploss_limit_ce, trigger_price=stoploss_limit_trigger_ce,retention='DAY', remarks='my_order_001')
-            sl_order_number=sl_order_number['norenordno']
-            log(f'[SLOrderPlaced] Placed SL order for call position and order number is {sl_order_number}')
-        elif order_status=='OPEN':
-            ret = api.cancel_order(orderno=order_no)
-            check_order_stat()
-            log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
-            pass
-        elif order_status=='REJECTED':
-            log(f'[OrderRejected] Order Rejected')
+#     check_order_stat()
+#     try:
+#         if order_status=='COMPLETE':
+#             print("Placed SELL SL order")
+#             sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_ce, quantity=qty, discloseqty=0,
+#                                         price_type='SL-LMT', price=stoploss_limit_ce, trigger_price=stoploss_limit_trigger_ce,retention='DAY', remarks='my_order_001')
+#             sl_order_number=sl_order_number['norenordno']
+#             log(f'[SLOrderPlaced] Placed SL order for call position and order number is {sl_order_number}')
+#         elif order_status=='OPEN':
+#             ret = api.cancel_order(orderno=order_no)
+#             check_order_stat()
+#             log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
+#             pass
+#         elif order_status=='REJECTED':
+#             log(f'[OrderRejected] Order Rejected')
             
-    except Exception as e:
-        errorlog(f'an exception occurred :: {e}')
+#     except Exception as e:
+#         errorlog(f'an exception occurred :: {e}')
 
 def placePutOrder():   # Place the Put option order
     global order_no
@@ -336,36 +340,36 @@ def placePutOrder():   # Place the Put option order
             check_order_stat()
         else:
             pass
-        if check_SL == 1:
-            place_sl_order_call()
-        else:
-            pass
+        # if check_SL == 1:
+        #     place_sl_order_call()
+        # else:
+        #     pass
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
-def place_sl_order_put():
-    global sl_order_number
-    global stoploss_limit_pe
-    global stoploss_limit_trigger_pe
-    stoploss_limit_pe=float(price_ltp)-float(sl)
-    stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
-    check_order_stat()
-    try:
-        if order_status=='COMPLETE':
-            print("Placed SELL SL order")
-            sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_pe, quantity=qty, discloseqty=0,
-                                        price_type='SL-LMT', price=stoploss_limit_pe, trigger_price=stoploss_limit_trigger_pe,retention='DAY', remarks='my_order_001')
-            sl_order_number=sl_order_number['norenordno']
-            log(f'[SLOrderPlaced] Placed SL order for put position and order number is {sl_order_number}')
-        elif order_status=='OPEN':
-            cancel_ord = api.cancel_order(orderno=order_no)
-            check_order_stat()
-            log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
-            pass
-        elif order_status=='REJECTED':
-            log(f'[OrderRejected]order rejected')
-    except Exception as e:
-        errorlog(f'an exception occurred :: {e}')
+# def place_sl_order_put():
+#     global sl_order_number
+#     global stoploss_limit_pe
+#     global stoploss_limit_trigger_pe
+#     stoploss_limit_pe=float(price_ltp)-float(sl)
+#     stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
+#     check_order_stat()
+#     try:
+#         if order_status=='COMPLETE':
+#             print("Placed SELL SL order")
+#             sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_pe, quantity=qty, discloseqty=0,
+#                                         price_type='SL-LMT', price=stoploss_limit_pe, trigger_price=stoploss_limit_trigger_pe,retention='DAY', remarks='my_order_001')
+#             sl_order_number=sl_order_number['norenordno']
+#             log(f'[SLOrderPlaced] Placed SL order for put position and order number is {sl_order_number}')
+#         elif order_status=='OPEN':
+#             cancel_ord = api.cancel_order(orderno=order_no)
+#             check_order_stat()
+#             log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
+#             pass
+#         elif order_status=='REJECTED':
+#             log(f'[OrderRejected]order rejected')
+#     except Exception as e:
+#         errorlog(f'an exception occurred :: {e}')
 
 def destroy_sl_show():
     sl_symbol_lbl1.destroy()
@@ -1084,26 +1088,26 @@ price_lable.place(x=400,
 #                y=140)
 
 ### Entry box
-def radio_clicked(value):
-    global check_SL
-    global stoploss
-    global radio_sl,loss
-    check_SL=value
-    if check_SL == 1:
-        ### SL Entry
-        stoploss=IntVar()
-        loss=Entry(root,
-                width=5,
-                textvariable=stoploss,
-                borderwidth=0)
-        loss.place(x=260,
-                   y=120)
-        stoploss.trace("w", loss_stop)
-        pass
+# def radio_clicked(value):
+#     global check_SL
+#     global stoploss
+#     global radio_sl,loss
+#     check_SL=value
+#     if check_SL == 1:
+#         ### SL Entry
+#         stoploss=IntVar()
+#         loss=Entry(root,
+#                 width=5,
+#                 textvariable=stoploss,
+#                 borderwidth=0)
+#         loss.place(x=260,
+#                    y=120)
+#         stoploss.trace("w", loss_stop)
+#         pass
 
-sl_radio=IntVar()   
-radio_sl=Radiobutton(root,text="SL", variable=sl_radio,value=1,command=lambda:radio_clicked(sl_radio.get()),background="#ffffe6",bd=0)
-radio_sl.place(x=200, y=120)
+# sl_radio=IntVar()   
+# radio_sl=Radiobutton(root,text="SL", variable=sl_radio,value=1,command=lambda:radio_clicked(sl_radio.get()),background="#ffffe6",bd=0)
+# radio_sl.place(x=200, y=120)
 
 
 ### Order Stat
