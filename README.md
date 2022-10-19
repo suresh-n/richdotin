@@ -79,9 +79,11 @@ $python Richdotin_Scalper_App.py
 
 * To trail the SL order right click position symbol below the position details bottom and select modify SL to trail the SL. 
 
-##### Quick Scalper Tool
+##### Quick Scalper Tool [WIP]
 
 Quick scalper code can be used to place order with target order of just 3 point which is easy to get in index option. We just need to make multiple scalps to achive the day % profit.
+
+> As of now there is no SL order placed using code only buy order + target order. need to improve the code to track the price and place SL or target order. 
 
 ##### How to run the tool 
 
