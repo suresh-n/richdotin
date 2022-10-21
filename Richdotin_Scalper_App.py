@@ -12,13 +12,12 @@ import pandas as pd
 from tkinter import simpledialog,filedialog,messagebox
 import pyotp
 
-factor2 = pyotp.TOTP('xxxxxxxxxxxxxxxxx').now() #copy the authenticator code here in quote.
-
-
 import configparser
 from pathlib import Path
 config = configparser.ConfigParser()
 config.read('config.ini')
+
+authotp = pyotp.TOTP(config.get("CRED","authenticator")).now() #copy the authenticator code here in quote.
 
 start = datetime.now()
 print(start)
@@ -69,12 +68,12 @@ refresh_fg='Green'
 def write_test():
         get_user=get_username.get()
         get_password=get_pwd.get()
-        get_factor2_1=get_factor2.get()
+        get_Auth_2_1=get_Auth.get()
         get_vc_1=get_vc.get()
         get_apikey_1=get_apikey.get()
         config.set("CRED", "user", get_user )
         config.set("CRED", "pwd", get_password)
-        config.set("CRED", "factor2",get_factor2_1)
+        config.set("CRED", "authenticator",get_Auth_2_1)
         config.set("CRED", "vc",get_vc_1)
         config.set("CRED", "app_key",get_apikey_1)
         with open('config.ini', 'w') as configfile:
@@ -85,35 +84,35 @@ def write_test():
 def Login(): #Login function get the api login + username and cash margin
 
     global ret
-    global get_username,get_pwd,get_factor2,get_vc,get_apikey
+    global get_username,get_pwd,get_Auth,get_vc,get_apikey
     global top
     if not config.get("CRED","user"):
         log("CRED Variable is empty so getting variable")
 
         top= Toplevel(root)
-        top.geometry("300x270")
+        top.geometry("310x270")
         top.title("Richdotin Scalping App")
         top.config(background="Grey")
         lbl_username=Label(top,text="User:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
         lbl_username.place(x=30,y=20)
         lbl_password=Label(top,text="Password:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
         lbl_password.place(x=30,y=60)
-        lbl_factor2=Label(top,text="Factor2:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
-        lbl_factor2.place(x=30,y=100)
+        lbl_Auth=Label(top,text="Authenticator:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
+        lbl_Auth.place(x=30,y=100)
         lbl_vc=Label(top,text="VC:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
         lbl_vc.place(x=30,y=140)
         lbl_api_key=Label(top,text="api_key:",fg=top_lbl_fg,font=top_lbl_font, bg=top_lbl_bg)
         lbl_api_key.place(x=30,y=180)
         get_username=Entry(top,width=15,borderwidth=0)
-        get_username.place(x=120,y=20)
+        get_username.place(x=130,y=20)
         get_pwd=Entry(top,width=15,show="*",borderwidth=0)
-        get_pwd.place(x=120,y=60)
-        get_factor2=Entry(top,width=15,borderwidth=0)
-        get_factor2.place(x=120,y=100)
+        get_pwd.place(x=130,y=60)
+        get_Auth=Entry(top,width=20,borderwidth=0)
+        get_Auth.place(x=130,y=100)
         get_vc=Entry(top,width=15,borderwidth=0)
-        get_vc.place(x=120,y=140)
+        get_vc.place(x=130,y=140)
         get_apikey=Entry(top,width=20,show="*",borderwidth=0)
-        get_apikey.place(x=120,y=180)
+        get_apikey.place(x=130,y=180)
 
         submit_btn1 = Button(top, 
                     text='Submit',
@@ -131,7 +130,7 @@ def Login(): #Login function get the api login + username and cash margin
 
         try:
             #ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
-            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=factor2,vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
+            ret = api.login(userid = config.get("CRED","user"), password=config.get("CRED","pwd"),twoFA=authotp,vendor_code=config.get("CRED","vc"),api_secret=config.get("CRED","app_key"),imei=config.get("CRED","imei") )
             usersession=ret['susertoken']
             username = ret['uname']
             username = "Welcome" + " " + username + "!"
@@ -224,13 +223,7 @@ def startThread(thread): # Start the Thread (Thread Manager)
         case 6:
             t1=threading.Thread(target=pos,daemon='true')
             t1.start()
-        # case 7:
-        #     t1=threading.Thread(target=my_update)
-        #     t1.start()
-#testing the stopthread
-# def stopThread():
-#     global stopPos
-#     stopPos=True
+
 def stopThread(thread):  # Stop the Thread (Thread Manager)
     global stopPos,stopStrat
     match thread:
@@ -285,40 +278,11 @@ def placeCallOrder():  # Place the Call option order
             check_order_stat()
         else:
             pass
-        # if check_SL == 1:
-        #     place_sl_order_call()
-        # else:
-        #     pass
+
         
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
-# def place_sl_order_call():
-#     global sl_order_number
-#     global stoploss_limit_ce
-#     global stoploss_limit_trigger_ce
-
-#     stoploss_limit_ce=float(price_ltp)-float(sl)
-#     stoploss_limit_trigger_ce=float(stoploss_limit_ce) + float(1.0)
-
-#     check_order_stat()
-#     try:
-#         if order_status=='COMPLETE':
-#             print("Placed SELL SL order")
-#             sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_ce, quantity=qty, discloseqty=0,
-#                                         price_type='SL-LMT', price=stoploss_limit_ce, trigger_price=stoploss_limit_trigger_ce,retention='DAY', remarks='my_order_001')
-#             sl_order_number=sl_order_number['norenordno']
-#             log(f'[SLOrderPlaced] Placed SL order for call position and order number is {sl_order_number}')
-#         elif order_status=='OPEN':
-#             ret = api.cancel_order(orderno=order_no)
-#             check_order_stat()
-#             log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
-#             pass
-#         elif order_status=='REJECTED':
-#             log(f'[OrderRejected] Order Rejected')
-            
-#     except Exception as e:
-#         errorlog(f'an exception occurred :: {e}')
 
 def placePutOrder():   # Place the Put option order
     global order_no
@@ -340,36 +304,9 @@ def placePutOrder():   # Place the Put option order
             check_order_stat()
         else:
             pass
-        # if check_SL == 1:
-        #     place_sl_order_call()
-        # else:
-        #     pass
+
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
-
-# def place_sl_order_put():
-#     global sl_order_number
-#     global stoploss_limit_pe
-#     global stoploss_limit_trigger_pe
-#     stoploss_limit_pe=float(price_ltp)-float(sl)
-#     stoploss_limit_trigger_pe=float(stoploss_limit_pe) + float(1.0)
-#     check_order_stat()
-#     try:
-#         if order_status=='COMPLETE':
-#             print("Placed SELL SL order")
-#             sl_order_number=api.place_order(buy_or_sell='S', product_type='I',exchange='NFO', tradingsymbol=tsym_pe, quantity=qty, discloseqty=0,
-#                                         price_type='SL-LMT', price=stoploss_limit_pe, trigger_price=stoploss_limit_trigger_pe,retention='DAY', remarks='my_order_001')
-#             sl_order_number=sl_order_number['norenordno']
-#             log(f'[SLOrderPlaced] Placed SL order for put position and order number is {sl_order_number}')
-#         elif order_status=='OPEN':
-#             cancel_ord = api.cancel_order(orderno=order_no)
-#             check_order_stat()
-#             log(f'[OrderCancelled] Order Still open, since cancelled {order_no} to avoid the loop.Place the order again')
-#             pass
-#         elif order_status=='REJECTED':
-#             log(f'[OrderRejected]order rejected')
-#     except Exception as e:
-#         errorlog(f'an exception occurred :: {e}')
 
 def destroy_sl_show():
     sl_symbol_lbl1.destroy()
@@ -541,11 +478,6 @@ def pos():
                     pnlpos=float(row["urmtom"])
                     netqty=float(row["netqty"])
                     exch=row["exch"]
-                # else:
-                #     global stopPos
-                #     if(stopPos==True):
-                #         stopPos=False
-                #         break
             if netqty != 0:
                 pos_symbol=Label(root,text=symbol,width=25,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_symbol.place(x=10,y=250) 
@@ -745,16 +677,6 @@ def my_strike(*args): # Get the token details according to the Comobox selection
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
-#qty_value=0    
-def loss_stop(*args):
-    global sl
-
-    try:
-        sl=float(stoploss.get())
-        #qty=qtycalldata.get()
-        log(f'collected the SL: {sl}')
-    except Exception as e:
-        errorlog(f'an exception occurred :: {e}')
 
 def export_log_to_excel():
     if len(tv.get_children()) < 1:
@@ -1036,14 +958,7 @@ Strike_lbl1 = Label(root,
                     font=lbl_fonts)
 Strike_lbl1.place(x=10,
                   y=140)
-#SL Label 
-# sl_text = Label(root,
-#                 text='SL:',
-#                 bg=lbl_bg,
-#                 font=lbl_fonts)
-# sl_text.place(x=250,
-#               y=80)
-#Order Stat Label
+
 ord_stat = Label(root,
                  text='Order Stat:',
                  bg=lbl_bg,
@@ -1079,35 +994,6 @@ price_lable = Label(root,
                     font=lbl_fonts)
 price_lable.place(x=400,
                   y=110)
-# # QTY Label
-# QTY_lbl1 = Label(root, 
-#                  text='Lot:',
-#                  bg=lbl_bg,
-#                  font=lbl_fonts)
-# QTY_lbl1.place(x=360, 
-#                y=140)
-
-### Entry box
-# def radio_clicked(value):
-#     global check_SL
-#     global stoploss
-#     global radio_sl,loss
-#     check_SL=value
-#     if check_SL == 1:
-#         ### SL Entry
-#         stoploss=IntVar()
-#         loss=Entry(root,
-#                 width=5,
-#                 textvariable=stoploss,
-#                 borderwidth=0)
-#         loss.place(x=260,
-#                    y=120)
-#         stoploss.trace("w", loss_stop)
-#         pass
-
-# sl_radio=IntVar()   
-# radio_sl=Radiobutton(root,text="SL", variable=sl_radio,value=1,command=lambda:radio_clicked(sl_radio.get()),background="#ffffe6",bd=0)
-# radio_sl.place(x=200, y=120)
 
 
 ### Order Stat
