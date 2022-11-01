@@ -2,7 +2,7 @@
 
 The Scalping App can be used to send orders to finvaisa broker using api without look much calculation about strikes. We can just select the strike like ATM , ITM and OTM and click buy to place limit buy order easily with desired stoploss and qty. We can also manully add stoploss and trail it when the price above your buy avg price. 
 
-![](https://i.imgur.com/DcLxofj.png)
+![](https://i.imgur.com/ltSnCtG.png)
 
 
 ##### How to setup the scalper app 
@@ -107,4 +107,9 @@ $ python Quick_Scalper.py
 
 * Tool hung  when running position while for longer. 
 * When the SL hit the details not updated in the App. 
+* Yet to add websocket for the automatic price update.  
 
+
+##### Contributions are welcome. 
+
+Please create a PR. 
