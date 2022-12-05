@@ -65,6 +65,7 @@ refresh_bg='White'
 refresh_fg='Green'
 
 
+
 def write_test():
         get_user=get_username.get()
         get_password=get_pwd.get()
@@ -134,13 +135,90 @@ def Login(): #Login function get the api login + username and cash margin
             usersession=ret['susertoken']
             username = ret['uname']
             username = "Welcome" + " " + username + "!"
-            #Welcome_lbl2 = Label(root, text=username, fg=lbl_fg,font=lbl_fonts, bg="Green")
             Welcome_lbl2 = Label(root, text=username, fg="Green",font=lbl_fonts, bg="White")
             Welcome_lbl2.place(x=90, y=10)
             log(f'Sucessfully Login to the account {username}')
+            setupwebsocket()
+            sleep(0.5)
+            api.subscribe(['NSE|26009', 'NSE|26000'])
+            
         except Exception as e:
             errorlog(f'an exception occurred :: {e} API ERROR')
 
+feed_opened = False
+live_data = {}
+SYMBOLDICT = {}
+
+def event_handler_quote_update(inmessage):
+    # print(inmessage['lp'],inmessage['ts'])
+    global live_data
+
+    global SYMBOLDICT
+    # e   Exchange
+    # tk  Token
+    # lp  LTP
+    # pc  Percentage change
+    # v   volume
+    # o   Open price
+    # h   High price
+    # l   Low price
+    # c   Close price
+    # ap  Average trade price
+
+    fields = [
+        "ts",
+        "lp",
+        "pc",
+        "c",
+        "o",
+        "h",
+        "l",
+        "v",
+        "ltq",
+        "ltp",
+        "bp1",
+        "sp1",
+        "ap",
+        "oi",
+        "ap",
+        "poi",
+        "toi",
+    ]
+
+    message = {field: inmessage[field] for field in set(fields) & set(inmessage.keys())}
+    # print(message)
+    key = inmessage["e"] + "|" + inmessage["tk"]
+
+    if key in SYMBOLDICT:
+        symbol_info = SYMBOLDICT[key]
+        symbol_info.update(message)
+        SYMBOLDICT[key] = symbol_info
+        live_data[key] = symbol_info
+    else:
+        SYMBOLDICT[key] = message
+        live_data[key] = message
+
+def event_handler_order_update(tick_data):
+    # print(f"Order update {tick_data}")
+    print("order update")
+def open_callback():
+    global feed_opened
+    feed_opened = True
+
+def setupwebsocket():
+    global feed_opened
+    api.start_websocket(
+            order_update_callback=event_handler_order_update,
+            subscribe_callback=event_handler_quote_update,
+            socket_open_callback=open_callback,
+        )
+    print('App connected')
+    sleep(1)
+    while feed_opened == False:
+            print(feed_opened)
+            pass
+    return True
+    
 def Refresh_clicked(): # Function get the BN last price so the code can calculate the Strikes 
     pos_data=api.get_positions()
     if pos_data == None:
@@ -231,6 +309,7 @@ def stopThread(thread):  # Stop the Thread (Thread Manager)
             stopPos=True
         case 1:
             stopStrat=True
+
 
 def check_order_stat(): # Check the order details to place the SL order
     
@@ -463,9 +542,11 @@ def pos():
     global profitLabel,Avg,netqty,symbol,exch
     global pos_symbol,pos_Avg,pos_ltp,pos_netqty,profitLabel
     global right_menu
+
     try:
         netqty =0 
         while True:
+            Refresh_clicked()
             orders=api.get_positions()
             orders=pd.DataFrame(orders)
             row=0
@@ -478,7 +559,7 @@ def pos():
                     pnlpos=float(row["urmtom"])
                     netqty=float(row["netqty"])
                     exch=row["exch"]
-            if netqty != 0:
+            if netqty > 0:
                 pos_symbol=Label(root,text=symbol,width=25,bg="cornsilk3",fg="black",font=("Arial Black",10))
                 pos_symbol.place(x=10,y=250) 
                 pos_Avg=Label(root,text=Avg,width=10,bg="cornsilk3",fg="black",font=("Arial Black",10))
@@ -497,17 +578,19 @@ def pos():
 
                 pos_symbol.bind("<Button-3>", do_popmenu)
 
+                
                 if pnlpos > 0:
                     profitLabel.config(bg="Green")
                 else:
                     profitLabel.config(bg="Red")
             elif netqty == 0:
                 log(f'No Open Position since the loop brokened')
-                global stopPos
-                if(stopPos==True):
-                    stopPos=False
-                    break
                 break
+                # global stopPos
+                # if(stopPos==True):
+                #     stopPos=False
+                #     break
+                # break
                 
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
@@ -563,11 +646,14 @@ def my_strike(*args): # Get the token details according to the Comobox selection
     global token_pe
 
     Strike_selection=Strike_combo_box1.get()    
-
-    bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
-    nifty_lp=api.get_quotes('NSE', 'Nifty 50')
-    bn_nifty_lp=float(bn_nifty_lp['lp'])
-    nifty_lp=float(nifty_lp['lp'])
+    bn_TokenKey='NSE|26009'
+    nf_TokenKey='NSE|26000'
+    bn_nifty_lp=float(live_data[bn_TokenKey].get('lp'))
+    nifty_lp=float(live_data[nf_TokenKey].get('lp'))
+    # bn_nifty_lp=api.get_quotes('NSE', 'Nifty Bank') 
+    # nifty_lp=api.get_quotes('NSE', 'Nifty 50')
+    # bn_nifty_lp=float(bn_nifty_lp['lp'])
+    # nifty_lp=float(nifty_lp['lp'])
 
     try:
         if index_symbol == "NIFTY":
@@ -674,6 +760,17 @@ def my_strike(*args): # Get the token details according to the Comobox selection
         tsym_pe=res_pe['values'][0]['tsym']
         token_pe=res_pe['values'][0]['token']
         update_ltp()
+        # exchange = 'NFO'
+        # # symbol_sub = []
+        # # symbol_sub.append(f"{exchange}|{token_ce}")
+        # # symbol_sub.append(f"{exchange}|{token_pe}")
+        # # api.subscribe(symbol_sub)
+        # token_ce = 50634
+        # CE_Token_Key = exchange + "|" + str(token_ce)
+        # sn_ltp=float(live_data[CE_Token_Key].get('lp'))
+        # display_call_ltp=Label(root,text=sn_ltp,width=5,bg='Orange')
+        # display_call_ltp.place(x=450,y=110)
+        
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
@@ -752,19 +849,20 @@ def update_ltp(): # Update the strike price in tkinter window
     except Exception as e:
         errorlog(f'an exception occurred :: {e}')
 
+
 root=Tk()
 #root.geometry("590x330")
 root.geometry("590x350")
 root.config(background="#ffffe6")
 root.title('Richdotin Scalper App')
+# root.wait_visibility(root)
+# root.wm_attributes("-alpha", 0.5)
 style= ttk.Style()
 
 style.theme_use('default')
 #style.theme_use('winnative') ## enable this for windows
 root.tk.call('wm', 'iconphoto', root._w, tk.PhotoImage(file='richdotin.png'))
 #root.iconbitmap(r'c:\Users\SN\exe\ShoonyaApi-py\richdotcom.ico')
-
-
 
 
 def time():
@@ -1047,5 +1145,7 @@ qty_combo_box1.place(x=400, y=140)
 qty_combo_box1.current(0)
 qty_combo.trace('w',my_index)
 
+
 ## Main loop
+
 root.mainloop()
