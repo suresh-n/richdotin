@@ -2,7 +2,7 @@ from time import sleep
 from tkinter import *
 import tkinter as tk
 from tkinter import ttk
-import threading,json,math,sqlite3,logging,os,csv,time,ws
+import threading,json,math,sqlite3,logging,os,csv,time
 from datetime import datetime, timedelta
 from datetime import datetime as dt
 from datetime import timedelta as td
