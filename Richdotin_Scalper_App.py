@@ -25,7 +25,7 @@ authotp = pyotp.TOTP(
 start = datetime.now()
 print(start)
 
-logfile = dt.now().strftime("%d-%m-%Y_%H%M%S") + "_Scalper_App.log"
+logfile = "./logs/" + dt.now().strftime("%d-%m-%Y_%H%M%S") + "_Scalper_App.log"
 print(logfile)
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
@@ -203,6 +203,7 @@ def Login():  # Login function get the api login + username and cash margin
             setupwebsocket()
             sleep(0.5)
             api.subscribe(["NSE|26009", "NSE|26000"])
+            
 
         except Exception as e:
             errorlog(f"an exception occurred :: {e} API ERROR")
@@ -216,7 +217,21 @@ SYMBOLDICT = {}
 def event_handler_quote_update(inmessage):
     global live_data, token_ce, token_pe, bn_nifty_lp, nifty_lp
 
-    print(inmessage["tk"], inmessage["lp"], inmessage["ts"])
+    
+
+    if inmessage["tk"] == str(26000):
+        nifty_price_lbl["text"] = inmessage["lp"]
+        print(inmessage["tk"], inmessage["lp"], inmessage["ts"])
+    if inmessage["tk"] == str(26009):
+        bnf_price_lbl["text"] = inmessage["lp"]
+        print(inmessage["tk"], inmessage["lp"], inmessage["ts"])
+
+    if inmessage["tk"] == str(token_ce):
+        display_call_ltp["text"] = inmessage["lp"]
+        print(inmessage["tk"], inmessage["lp"], inmessage["ts"])
+    if inmessage["tk"] == str(token_pe):
+        display_put_ltp["text"] = inmessage["lp"]
+        print(inmessage["tk"], inmessage["lp"], inmessage["ts"])
 
     global SYMBOLDICT
 
@@ -263,10 +278,7 @@ def event_handler_quote_update(inmessage):
     else:
         SYMBOLDICT[key] = message
         live_data[key] = message
-
-    update_idx_price()
-    update_ce_ltp()
-    update_pe_ltp()
+    
 
 
 def event_handler_order_update(tick_data):
@@ -295,7 +307,7 @@ def setupwebsocket():
 
 
 def Refresh():  # Function get the BN last price so the code can calculate the Strikes
-    global api
+    global api    
     pos_data = api.get_positions()
     if pos_data == None:
         log(f"No Positions Data available for today")
@@ -325,11 +337,11 @@ def Refresh():  # Function get the BN last price so the code can calculate the S
     margin_available_1lotnf = margin_available / 50
 
     print(
-        "With the avialble fund you can get one lot of BN with price:",
+        "With the available fund you can get one lot of BN with price:",
         margin_available_1lotbn,
     )
     print(
-        "With the avialble fund you can get one lot of NF with price:",
+        "With the available fund you can get one lot of NF with price:",
         margin_available_1lotnf,
     )
 
@@ -346,9 +358,9 @@ def Refresh():  # Function get the BN last price so the code can calculate the S
     root.update()
 
 
+
 stopPos = False
 stopStrat = False
-
 
 def startThread(thread):  # Start the Thread (Thread Manager)
     match thread:
@@ -739,7 +751,7 @@ def pos():
     try:
         netqty = 0
         while True:
-            Refresh()
+            # Refresh()
             orders = api.get_positions()
             orders = pd.DataFrame(orders)
             row = 0
@@ -878,7 +890,7 @@ def my_strike(
     nf_TokenKey = "NSE|26000"
     bn_nifty_lp = float(live_data[bn_TokenKey].get("lp"))
     nifty_lp = float(live_data[nf_TokenKey].get("lp"))
-    update_idx_price()
+    # update_idx_price()
 
     try:
         if index_symbol == "NIFTY":
@@ -1173,12 +1185,10 @@ root.tk.call("wm", "iconphoto", root._w, tk.PhotoImage(file="richdotin.png"))
 
 def update_idx_price():
     global bn_nifty_lp, nifty_lp
-    if live_data:
-        nifty_lp = float(live_data[f"NSE|26000"].get("lp"))
-        nifty_price_lbl["text"] = nifty_lp
-        bn_nifty_lp = float(live_data[f"NSE|26009"].get("lp"))
-        bnf_price_lbl["text"] = bn_nifty_lp
-
+    nifty_lp = float(live_data[f"NSE|26000"].get("lp"))
+    nifty_price_lbl["text"] = nifty_lp
+    bn_nifty_lp = float(live_data[f"NSE|26009"].get("lp"))
+    bnf_price_lbl["text"] = bn_nifty_lp
 
 def update_ce_ltp():
     global call_strike_ltp, token_ce
@@ -1196,6 +1206,7 @@ def update_pe_ltp():
         put_strike_ltp = float(live_data[f"{exchange}|{token_pe}"].get("lp"))
         # print(f"pe price :: {put_strike_ltp}")
         display_put_ltp["text"] = put_strike_ltp
+    
 
 
 display_call_ltp = Label(root, text=call_strike_ltp, width=5, bg="Orange")
@@ -1204,16 +1215,17 @@ display_put_ltp = Label(root, text=put_strike_ltp, width=5, bg="Orange")
 display_put_ltp.place(x=510, y=110)
 
 
-def time():
+def time_update():
     string = strftime("%H:%M:%S %p")
     lbl.config(text=string)
     lbl.after(1000, time)
 
 
+
 lbl = Label(root, font=time_font, background=time_bg, foreground=time_fg)
 lbl.place(x=350, y=10)
 
-time()
+time_update()
 
 welcome_lbl = Label(root, text="", fg="Green", font=lbl_fonts, bg="White")
 welcome_lbl.place(x=125, y=10)
@@ -1410,6 +1422,7 @@ bnf_lbl.place(x=260, y=150, width=70)
 
 nifty_price_lbl = Label(root, text=nifty_lp, bg="Orange", font=lbl_fonts)
 nifty_price_lbl.place(x=180, y=180, width=70)
+
 
 bnf_price_lbl = Label(root, text=bn_nifty_lp, bg="Orange", font=lbl_fonts)
 bnf_price_lbl.place(x=260, y=180, width=70)
