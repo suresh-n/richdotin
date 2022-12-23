@@ -449,13 +449,13 @@ def my_strike(*args): # Get the token details according to the Comobox selection
             bn_otm1 =bn_atm + 200
             bn_otm2 =bn_atm + 300
 
-            in_the_money1 = 'itm2'
+            in_the_money2 = 'itm2'
             in_the_money1 = 'itm1'
             in_the_money = 'itm'
             at_the_money = 'atm'
             out_of_the_money = 'otm'
             out_of_the_money1 = 'otm1'
-            out_of_the_money1 = 'otm2'
+            out_of_the_money2 = 'otm2'
 
             bn_list={"itm2": bn_itm2,"itm1": bn_itm1, "itm": bn_itm, "atm": bn_atm, "otm": bn_otm, "otm1": bn_otm1,"otm2": bn_otm2}
             in_the_money2 = 'itm2'

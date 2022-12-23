@@ -1,5 +1,21 @@
 # Richdotin Scalper App
 
+## FIX 
+
+Added api_helper and dist from shoonya py
+So just create a virtualenv after cloning the repository
+Open PowerShell and following commands below:
+
+```
+git clone https://github.com/rahulmr/richdotin.git richdotin_rmr
+python -m pip install -U pip wheel setuptools virtualenv
+pythom -m venv venv
+.\venv\Scripts\Activate.ps1
+(venv)$ python -m pip install -r requirements.txt
+(venv)$ python Richdotin_Scalper_App.py
+
+```
+
 The Scalping App can be used to send orders to finvaisa broker using api without look much calculation about strikes. We can just select the strike like ATM , ITM and OTM and click buy to place limit buy order easily with desired stoploss and qty. We can also manully add stoploss and trail it when the price above your buy avg price. 
 
 ![](https://i.imgur.com/ltSnCtG.png)
