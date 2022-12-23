@@ -18,10 +18,6 @@ from pathlib import Path
 config = configparser.ConfigParser()
 config.read("config.ini")
 
-authotp = pyotp.TOTP(
-    config.get("CRED", "authenticator")
-).now()  # copy the authenticator code here in quote.
-
 start = datetime.now()
 print(start)
 
@@ -182,6 +178,10 @@ def Login():  # Login function get the api login + username and cash margin
     else:
 
         try:
+            authotp = pyotp.TOTP(
+            config.get("CRED", "authenticator")
+            ).now()  # copy the authenticator code here in quote.
+
             # ret = api.login(userid = config.user, password = config.pwd, twoFA=config.factor2, vendor_code=config.vc, api_secret=config.app_key, imei=config.imei)
             ret = api.login(
                 userid=config.get("CRED", "user"),
